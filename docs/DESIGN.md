@@ -1028,7 +1028,12 @@ Wrapper rules:
 
 The order of the table:
 
-- Rows 1–5 are fixed byte strings at offset 0, so they are cheap and exact.
+- Rows 1–5 are fixed byte strings at offset 0, so they are cheap. "Exact" holds only within a row's own
+  system; the residual cross-system risk is accepted: a valid SNES image whose first four bytes are
+  `4E 45 53 1A` matches row 1 and is then refused by the NES core with a bad-header message; likewise a GB
+  image starting with `4E 45 53 1A` (row 7 never runs); an SNES image crafted to pass the GBA row's branch,
+  fixed byte and complement is claimed as GBA (row 6 precedes row 8). All are contrived, the order is frozen
+  by SPEC §4, and the failure mode is a refusal with a reason, never a guess (SPEC principle 2).
 - GBA comes before GB.
 - SNES comes last because it is a score, not a magic number (SPEC §11).
 
@@ -1041,7 +1046,7 @@ an NSF version other than 1, or a SNES coprocessor). Detection never rewrites a 
 
 | # | Row | Check | Result | Sources |
 |---|---|---|---|---|
-| 1 | iNES / NES 2.0 | `len >= 16` and `b[0..4] == 4E 45 53 1A` ("NES" + EOF) | Nes, `Ines`; `Nes20` when `(b[7] & 0x0C) == 0x08` | NESdev "iNES", "NES 2.0" (bit 2 clear, bit 3 set); nes `src/cart.rs:170-175`, `:203` |
+| 1 | iNES / NES 2.0 | `len >= 16` and `b[0..4] == 4E 45 53 1A` ("NES" + EOF) | Nes, `Ines`; `Nes20` when `(b[7] & 0x0C) == 0x08` | NESdev "iNES", "NES 2.0" (bit 2 clear, bit 3 set); nes `src/cart.rs:170-175`, `:206` |
 | 2 | UNIF | `len >= 32` and `b[0..4] == "UNIF"` | Nes, `Unif` | NESdev "UNIF" (32-byte header); nes `src/unif.rs:29` |
 | 3 | FDS, fwNES header | `len >= 16` and `b[0..4] == 46 44 53 1A` ("FDS" + EOF) | Nes, `FdsHeadered` | NESdev "FDS file format" (byte 4 = side count, 65500 bytes per side); nes `src/mapper/fds.rs:26` |
 | 4 | FDS / QD, no header | `len >= 15`, `b[0] == 0x01` and `b[1..15] == "*NINTENDO-HVC*"` | Nes, `FdsRaw` (`Qd` when the extension is `.qd`, §3.3) | NESdev "FDS disk format" (block 1, disk info block); nes `src/launch.rs:942`, `:990` |
@@ -1143,7 +1148,7 @@ archive refusals (§2.9) and of the "not a ROM" refusals, which become SPEC's.
 | C1 | §4 GB row: `$0146 = 03` → SGB | gb never reads `$0146`; SGB only via setting or `--sgb` (gb `src/main.rs:575`) | The flag is reported; the model is chosen as today (§3.4) |
 | C2 | §4 GBA row: logo + `$B2 = 96h` | gb `src/gba/cart.rs` requires branch + `$B2` + complement; logo recorded only | Signature = branch + `$B2` + complement (§3.2 row 6) |
 | C3 | §4 GB row implies every GB ROM has the logo | unlicensed boards with decoy headers carry no logo | Logo match is a signature; no logo falls through to the extension (§3.3) |
-| C4 | §4 NES 2.0 "byte 7 bits 2–3 = 10" | NESdev: bit 2 clear, bit 3 set; nes `src/cart.rs:203` | `(b[7] & 0x0C) == 0x08` |
+| C4 | §4 NES 2.0 "byte 7 bits 2–3 = 10" | NESdev: bit 2 clear, bit 3 set; nes `src/cart.rs:206` | `(b[7] & 0x0C) == 0x08` |
 | C5 | §4 raw FDS row identifies FDS | a QD side starts with the same block (NESdev "FDS disk format"); nes tells them apart by extension (`src/launch.rs:1169`, `:1219`) | Row 4 picks the NES core; `.qd` vs `.fds` stays extension-based |
 | C6 | §3/§4 `.nsf` | nes accepts NSF version 1 only (`src/nsf.rs:86`); NSFe ("NSFE") is unsupported (`src/launch.rs:1809`, `:1817`) | `.nsf` version 1; others refused by the core with its text |
 | C7 | §5 and #18 SNES "256/512 x 224/239" | snes outputs 256x224 only: `src/lib.rs:13` "NTSC, no overscan"; hi-res is sampled `x*2` into 256 columns (`src/ppu/layers.rs:85`, `:94`) | SNES native size is 256x224. 512-wide or 239-line output is new behaviour (backlog) |
@@ -1167,7 +1172,7 @@ archive refusals (§2.9) and of the "not a ROM" refusals, which become SPEC's.
 
 ### 4.1 The two copies
 
-gb's `src/sgb/spc/` and snes's `src/apu/` hold the same five files. Line counts at the source commits, and the four
+gb's `src/sgb/spc/` and snes's `src/apu/` hold the same five files. Line counts at the source commits, and the five
 differences found by diffing them:
 
 | File | snes lines | gb lines |
@@ -1182,8 +1187,9 @@ differences found by diffing them:
 |---|---|---|---|
 | D1 | Clock unit and `SPC_ACC_BIAS` | master-clock ticks, `96 * MASTER_CLOCK_HZ` | SPC cycles, `96` |
 | D2 | Voice `brr` address | `u32` (`Addr`), saved with `w.u32` | `u16`, saved with `w.u16` |
-| D3 | RAM in the state | `bytes` (no length) | `bytes_into` (u32 length prefix) |
+| D3 | RAM in the state | host `StateWriter::bytes` writes raw (snes `src/state.rs:115-118`) | host `StateWriter::bytes` writes a u32 length prefix first (gb `src/state.rs:112-115`); the APU call sites are identical (`w.bytes(&*self.ram)`) |
 | D4 | Shared constants | taken from the crate root | declared locally |
+| D5 | Signed DSP state words | saved with `w.i16` (snes `src/apu/dsp.rs:586-591`) | re-encoded through `w.u16(v as u16)` (gb `src/sgb/spc/dsp.rs:589-594`; gb's writer has no `i16`); the bytes agree, both little-endian two's complement (snes `src/state.rs:96-98`) |
 
 ### 4.2 What tendy-spc takes
 
@@ -1208,8 +1214,14 @@ pub enum Host {
 ```
 
 - **Timing.** `Apu::new(host)` stores the host. The run loop uses the host's bias, so each host keeps today's arithmetic.
-- **State.** `save_state`/`load_state` branch on the host at the two differing fields. Each host's state bytes stay
-  byte-identical to its source.
+- **State.** The shared `save_state`/`load_state` are generic over a small write/read pair of traits implemented by
+  each host's own `StateWriter`/`StateReader` — the traits hold only the methods both hosts already have, so there
+  is no `i16` in them (gb's writer has none). Signed DSP words are written `w.u16(v as u16)` on both hosts: the same
+  two little-endian two's-complement bytes as snes's `w.i16` today (snes `src/state.rs:96-98`; gb's copy already
+  re-encodes this way, gb `src/sgb/spc/dsp.rs:589-594`). The `brr` width branches on the host (D2). RAM goes through
+  the host's own `bytes`: gb's writes a u32 length prefix (gb `src/state.rs:112-115`), snes's raw
+  (snes `src/state.rs:115-118`), while the APU call sites are identical (`w.bytes(&*self.ram)`) — no call-site
+  branch there. Each host's state bytes stay byte-identical to its source.
 - **`brr` width.** The internal type is snes's `u32`, and the SGB host writes `as u16`.
   - UNVERIFIED: that snes never holds a `brr` value above `0xFFFF` (SPC RAM is 64 KiB, so the address should wrap).
   - Settle in #6 with a test that runs the SNES pin ROM and asserts `brr <= 0xFFFF` after every voice step. If it
@@ -1270,7 +1282,7 @@ Test inventory at the source commits (counted with `grep` over `#[test]` and `#[
 | Source | Integration `#[test]` | Integration `#[ignore]` | Unit tests in `src/` | Notes |
 |---|---|---|---|---|
 | gb | 837 | 38 | yes (e.g. `config` 11, `gba/bus` 33, `gba/cpu` 24, `status_bar` 15) | last full run at the source: 1072 passed, 0 failed, 30 ignored |
-| nes | 1050 | 14 | yes | one binary `tests/it/main.rs` (about 90 modules) + 4 standalone binaries |
+| nes | 1050 | 14 | yes | one binary `tests/it/main.rs` (about 90 modules) + 4 standalone binaries. The 14 `#[ignore = ...]` attributes: 6 in `tests/it` (`alignment_matrix`, `mapper228`, `nmi_race`, 3 in `tasvideos_movies`), 3 in `jit_perf`, 5 in `ppu_perf`; the other 4 of the 18 grep mentions in `tests/` are prose comments |
 | snes | 373 | 95 | none | 47 test files |
 
 ### 5.2 tendy-gb (#7)
@@ -1282,7 +1294,7 @@ Test inventory at the source commits (counted with `grep` over `#[test]` and `#[
 | GBA types the gb trait names | `EffectState` (from `src/gba/mod.rs`) and `SwiCall` (from `src/gba/bios.rs`), for `system.rs:425` and `:441` | `crates/tendy-gb/src/gba_types.rs`; tendy-gba re-exports them |
 | App-side (ported later) | `main.rs`, `audio.rs`, `config.rs`, `display.rs`, `draw.rs`, `file_pick.rs`, `gamepad.rs`, `keys.rs`, `launch.rs`, `menu.rs`, `recents.rs`, `rewind.rs`, `record.rs`, `screenshot.rs`, `session_switch.rs`, `settings.rs`, `status_bar.rs`, `thumb.rs`, `timing.rs`, `filter.rs` | §6.1 |
 | Replaced | `launch.rs` `load_zip`/`load_7z` (by #14) | — |
-| Dropped | `scripts/compare-acid2.py`, `scripts/compare-cgb-acid2.py` (the acid2 tests already compare pixels); `scripts/sweep-library.py` (replaced by #28); the examples (developer probes, about 33) | kept in the source archive (#35) |
+| Dropped | `scripts/compare-acid2.py`, `scripts/compare-cgb-acid2.py` (the acid2 tests already compare pixels); `scripts/sweep-library.py` (replaced by #28); `scripts/glyph-words.py`, `scripts/png-colours.py`, `scripts/sweep-swi.sh` (developer probes); the examples (developer probes, about 33) | kept in the source archive (#35) |
 | Merged by #5 | `scripts/fetch-test-roms.sh`, `scripts/test-roms.txt` | `scripts/` |
 
 Notes:
@@ -1292,7 +1304,8 @@ Notes:
 - UNVERIFIED: `EffectState` and `SwiCall` are plain data with no GBA-internal fields. Settle at the #7 build.
 - UNVERIFIED: no test, script or doc runs an example. Settle with `git grep -n "examples/"` at the gb commit.
 - **Link stays local.** It is `std::net` TCP on this machine only: the listener binds `127.0.0.1`
-  (gb `src/link.rs:248`) and the client connects to `127.0.0.1` (`:300`). This is consistent with SPEC's offline rule.
+  (gb `src/link.rs:248`, the `TcpListener::bind(("127.0.0.1", port))` line; :247 is `pub fn tcp_host`) and the
+  client connects to `127.0.0.1` (`:300`). This is consistent with SPEC's offline rule.
 - **gb tests.** Every `tests/*.rs` file except the `gba_*` files and the ones that `use` app-side modules. Both
   acid2 tests stay pixel-exact; that check is gated by the moved acid2 tests themselves (`tests/acid2.rs`, 2 run, 3 ignored).
 
@@ -1312,7 +1325,7 @@ Notes:
 | Tools that are core-side (no front imports) | `cdl`, `cheats`, `genie`, `cheatdb`, `watch`, `debugger`, `trace`, `profiler`, `symbols`, `events`, `movie` (BizHawk import uses zip), `history`, `rewind`, `runahead`, `tasedit`, `ra`, `patch`, `hdpack` (png), `ntsc` | `crates/tendy-nes/src/` |
 | Split | `launch.rs` (3186 lines): the code that builds a `Nes` from bytes moves; CLI, config and display code (`launch.rs` uses `config` at line 10 and `display` at line 12) stays app-side. `save.rs` (396 lines): `battery_snapshot` (`:38`) and the body half of `load_save` (`:53`) move; path handling stays app-side | `crates/tendy-nes/src/loader.rs`, `save.rs` |
 | App-side (ported later) | `main.rs`, `memview`, `history_view`, `audio`, `timing`, `avi`, `screenshot`, `crt`, `shader`, `display`, `config`, `settings`, `menu`, `status_bar`, `keys`, `gamepad`, `file_pick`, `recents`, `session_switch`, `draw`, `apu/eq.rs`, `apu/overlay.rs`, `ppu/overlay.rs` | §6.1 |
-| Dropped | the one internal task-runner script in `tools/` (every `tools/` file except `fetch_test_roms.py`) | — |
+| Dropped | the other eight `tools/` files (every `tools/` file except `fetch_test_roms.py`): the task-runner scripts `step.py` and `qwen_task.py`, the fetch/reference probes `fetch_cheats.py`, `fetch_sst.py`, `oam2_ref_model.py`, `volume_reference.py`, `release-local.sh`, and `third_party_licenses.py` — its job (licence texts of every linked crate, generated per release) is #32's `scripts/notices.sh` | — |
 | Merged by #5 | `tools/fetch_test_roms.py` (209 sha256-pinned entries) | `scripts/` |
 | Decided by #34 | `.github/workflows/accuracy.yml` | — |
 
@@ -1579,7 +1592,7 @@ Lanes run side by side. A dash means the issue is on the critical path alone.
 | #11 | comment and name edits under `crates/tendy-{gb,gba,nes,snes,spc}/` only (imported code); renames the one snes test file whose name carries an internal id to `crates/tendy-snes/tests/halt_probe.rs` (§5.5) | `app/tendyemu/tests/scrub.rs` | #6, #8, #9, #10 | — |
 | #12 | body of `crates/tendy-detect/src/signature.rs` | `crates/tendy-detect/tests/signature.rs` | #10 | D |
 | #13 | body of `crates/tendy-detect/src/extension.rs` | `crates/tendy-detect/tests/extension.rs` | #4 | E (may start after #4) |
-| #14 | body of `crates/tendy-detect/src/archive.rs` | `crates/tendy-detect/tests/archive.rs` | #12 | D |
+| #14 | body of `crates/tendy-detect/src/archive.rs` | `crates/tendy-detect/tests/archive.rs` | #12, #13 | D |
 | #15 | `app/tendyemu/src/{main,app,loader,menu,status_bar,recents,file_pick,draw,timing,battery}.rs` + the stubs of every other M4 module | `app/tendyemu/tests/shell.rs` | #11, #13, #14 | — |
 | #16 | `caps.rs` | `tests/capabilities.rs` | #15 | F |
 | #17 | `keys.rs`, `gamepad.rs` | `tests/input.rs` | #15 | G |
@@ -1611,7 +1624,7 @@ Unless a path says otherwise, it is under `app/tendyemu/src/`, and test paths ar
                 ├─► #9 ───────────────────────┼─► #11 ─┐
                 └─► #10 ─┬────────────────────┘        │
                          └─► #12 ─► #14 ────────────────┼─► #15 ─► F G H J K L M Q V ─► N O P R ─► S T U ─► #33 ─► #35
-          #4 ─► #13 ────────────────────────────────────┘
+          #4 ─► #13 ─────────────┴──────────────────────┘
 ```
 
 ---
@@ -1677,7 +1690,7 @@ Gates that are not tests (every issue): `cargo build`, `cargo test`, `cargo fmt 
 | Q8 | nes keeps its settings beside its executable | First-run offers a "Find the NES app folder" button (§6.5) |
 | Q9 | #36 "Check for updates" versus SPEC's offline rule | A menu row only, never automatic. It runs `curl` from PATH (shipped with Windows 10 and later, and most Linux) against the public releases page. No new dependency. It reports "cannot tell" when curl is missing or the machine is offline |
 | Q10 | The #11 scrub check in a public repo cannot list personal names | The tracked test holds generic patterns only (drive letters, home-folder paths, internal id shapes). Name patterns live in an untracked local file named by `TENDY_SCRUB_EXTRA` |
-| Q11 | nes's scrub load is large (about 1381 `#NNN` refs, 119 `PR-` refs, a personal name in one test file, an internal tool script) | Drop the tool script, strip the ids, keep the technical reasons in the comments |
+| Q11 | nes's scrub load is large (about 1104 `#NNN` refs, 78 `PR-` refs, a personal name in one test file, an internal tool script) | Drop the tool script, strip the ids, keep the technical reasons in the comments |
 | Q12 | gb's about 33 examples are developer probes | Drop them from TendyEmu; they stay in the archived source |
 | Q13 | Archive entry cap | 64 MiB. The largest supported images (GBA 32 MiB, SNES ExHiROM 8 MiB) fit with room |
 | Q14 | Should `.sgb` or the `$0146` flag select the SGB model? | Not in v0.1 (parity). Backlog |
