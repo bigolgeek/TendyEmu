@@ -1,0 +1,26 @@
+# build output
+target/
+# ROM images, saves and archives - never commit
+roms/
+*.gb
+*.gbc
+*.sgb
+*.gba
+*.nes
+*.fds
+*.qd
+*.unf
+*.nsf
+*.sfc
+*.smc
+*.sav
+*.srm
+*.zip
+*.7z
+# local settings and scratch
+config.toml
+recents.txt
+scratch/
+# os noise
+.DS_Store
+Thumbs.db
