@@ -1151,7 +1151,7 @@ archive refusals (§2.9) and of the "not a ROM" refusals, which become SPEC's.
 | C4 | §4 NES 2.0 "byte 7 bits 2–3 = 10" | NESdev: bit 2 clear, bit 3 set; nes `src/cart.rs:206` | `(b[7] & 0x0C) == 0x08` |
 | C5 | §4 raw FDS row identifies FDS | a QD side starts with the same block (NESdev "FDS disk format"); nes tells them apart by extension (`src/launch.rs:1169`, `:1219`) | Row 4 picks the NES core; `.qd` vs `.fds` stays extension-based |
 | C6 | §3/§4 `.nsf` | nes accepts NSF version 1 only (`src/nsf.rs:86`); NSFe ("NSFE") is unsupported (`src/launch.rs:1809`, `:1817`) | `.nsf` version 1; others refused by the core with its text |
-| C7 | §5 and #18 SNES "256/512 x 224/239" | snes outputs 256x224 only: `src/lib.rs:13` "NTSC, no overscan"; hi-res is sampled `x*2` into 256 columns (`src/ppu/layers.rs:85`, `:94`) | SNES native size is 256x224. 512-wide or 239-line output is new behaviour (backlog) |
+| C7 | §5 and #18 SNES "256/512 x 224/239" | snes outputs 256x224 only: `src/lib.rs:13` "NTSC, no overscan"; hi-res is sampled `x*2` into 256 columns (`src/ppu/layers.rs:85`, `:94`) | SNES native size is 256x224. 512-wide or 239-line output is new behaviour — **owner decision 2026-11-26: backlog** |
 | C8 | §3 soft patches "keep working for the cores that support them today" | only nes patches, IPS and BPS; UPS refused (nes `src/patch.rs`); gb and snes have none | Patches work today for NES (IPS, BPS) only; #30 adds the rest |
 | C9 | §5 Machine = "union of the three System traits" | nes has no trait; its machine is `struct Nes` (`src/nes.rs:261`) | Machine is the union of gb's and snes's traits plus a new NES wrapper (§2.2) |
 | C10 | #8: GBA "shares no hardware" with GB, read as "shares no code" | true of the hardware, but gb `src/gba/` imports gb's `link`, `state`, `serial`, `joypad`, `checksum`, `palette`, `cheats`, `cgb`, `debugger` | tendy-gba depends on tendy-gb (§1.2) |
@@ -1514,22 +1514,31 @@ added there (a few lines).
   config.toml                  §6.2
   recents.txt                  <system key> TAB <file>, newest first, 10 entries
   first-run.done               written when the first-run offer has been answered (#23)
-  gb/    keys.txt   games/
-  gba/   keys.txt   games/
-  nes/   keys.txt   games/
-  snes/  keys.txt   games/
+  gb/    keys.txt   games/   saves/   states/   screenshots/   recordings/   cheats/
+  gba/   keys.txt   games/   saves/   states/   screenshots/   recordings/
+  nes/   keys.txt   games/   saves/   states/   screenshots/   recordings/   cheats/   movies/
+  snes/  keys.txt   games/   saves/   states/   screenshots/   recordings/
 ```
 
 The folder rule is the one gb and snes already use (gb `config.rs:520-528`, snes `config.rs:131`). #21 creates the
 folders on a fresh install.
 
-Next to each ROM, unchanged:
+Every per-ROM file lives under its system's folders (owner decision, Q7 — per-system folders, SPEC §7), keyed by
+the ROM's file stem, so one game's four kinds of file sit together and nothing is written beside a ROM:
 
-- battery files (snes `.srm`, nes `.sav`, gb as today);
-- save states and their thumbnails;
-- nes `.cht` cheats and `.fm2` movies.
+| Kind | Path | Owner |
+|---|---|---|
+| battery save | `<system>/saves/<stem>.sav` (extension as today per system: snes `.srm`, nes `.sav`, gb as today) | #22 |
+| save state | `<system>/states/<stem>.<slot>.st` + `<stem>.<slot>.png` thumbnail beside it | #22 |
+| screenshot | `<system>/screenshots/<stem>-<n>.png` | #24 |
+| recording | `<system>/recordings/<stem>-<n>.{wav,gif,avi}` | #24 |
+| cheats (nes) | `<system>/cheats/<stem>.cht` | #26 |
+| movies (nes) | `<system>/movies/<stem>-<n>.fm2` | #26 |
 
-Keeping them where they are means existing saves keep working with no copy.
+**Reading a save the old apps wrote.** On open of a ROM, if the per-system file is absent and a file of the same
+stem and extension exists beside the ROM, that one is read and, on the first write, copied into the per-system
+folder (never modified, never moved). A user who skips the #23 offer, or whose ROM never appeared in an old recents
+list, therefore keeps their progress. Test: `save_beside_rom_adopted_on_first_write` (#22, #23).
 
 UNVERIFIED: the gb battery extension and the gb/snes state slot names. Settle in #22 by reading each source's
 `save.rs`/`thumb.rs`. Whatever they are, they are kept.
@@ -1559,7 +1568,7 @@ Building before dropping costs one core's memory for a moment. In return, a refu
 | 1 | Offer only when `first-run.done` is missing and an old app folder is found: `<config folder>/gb-rust/` or `<config folder>/snes-rust/`. nes keeps its `config.toml` beside its executable (nes `src/main.rs:71-73`), whose location TendyEmu cannot know, so the offer has a "Find the NES app folder" button |
 | 2 | Copy: open each old file read-only (`config.toml`, `recents.txt`, keys files). Write the converted content into the new files (§6.2 sections, §6.3 folders). Never rename, move, change or delete an old file |
 | 3 | Copy or skip, either answer writes `first-run.done`, so a second run does not offer |
-| 4 | Saves and states need no copy: they stay beside the ROMs (§6.3) |
+| 4 | Battery saves and states for ROMs the old recents list point at are copied into `<system>/saves/` and `<system>/states/` (file beside the ROM, same stem). Never moved, never modified; a missing one is simply absent, and §6.3's adopt-on-first-write rule still catches the rest |
 
 ---
 
@@ -1658,7 +1667,7 @@ Two ways a test gets its owner:
 | #20 | nes `session_switch.rs` unit tests | `switch.rs`: `gb_snes_nes_gba_switch_writes_battery_each_time`, `refused_open_keeps_running_game`, `switch_drops_rewind_history`, `switch_closes_recording` |
 | #21 | gb `config.rs` and `settings.rs` unit tests | `settings.rs`: `system_section_never_changes_another`, `fresh_install_creates_folders`, `missing_key_is_default`, `unknown_key_gives_one_notice`, `system_section_overrides_app_key`, `per_game_overrides_system_section` |
 | #22 | gb `thumb.rs` unit tests | `state_container.rs`: `wrap_unwrap_round_trip_each_system`, `nes_state_refused_while_gb_runs`, `legacy_state_of_running_system_accepted`, `legacy_state_of_other_system_refused`, `newer_container_refused`, `truncated_container_refused`, `unknown_tag_refused`. `states.rs`: `own_states_round_trip_byte_identical_each_system`, `slot_files_named_as_source_apps`, `thumbnail_beside_slot` |
-| #23 | — | `first_run.rs`: `copy_never_moves_or_changes_old_files`, `second_run_does_not_offer`, `old_settings_land_in_system_section`, `no_old_apps_no_offer`, `nes_folder_asked_when_not_found` (all in a throwaway folder) |
+| #23 | — | `first_run.rs`: `copy_never_moves_or_changes_old_files`, `second_run_does_not_offer`, `old_settings_land_in_system_section`, `no_old_apps_no_offer`, `nes_folder_asked_when_not_found`, `battery_file_copied_into_system_folder` (all in a throwaway folder) |
 | #24 | gb `rewind.rs`, `screenshot.rs`, `record.rs` unit tests; nes `avi.rs` unit tests | `capture.rs`: `rewind_steps_back_each_system`, `screenshot_native_size_each_system`, `wav_records_each_system`, `gif_records_each_system`, `avi_records_each_system` |
 | #25 | every gb front test not taken above (ported into `src/gb/` or `tests/gb_*.rs`), or listed in `baselines/dropped-tests-gb.txt` with the test that replaces it | `gb_parity.rs`: `gb_parity_rows_reachable` |
 | #26 | the same for nes (`tests/it` front modules, front unit tests) | `nes_parity.rs`: `nes_parity_rows_reachable` |
@@ -1678,6 +1687,9 @@ Gates that are not tests (every issue): `cargo build`, `cargo test`, `cargo fmt 
 
 ### 9.1 Open questions for the owner
 
+Answered questions stay in the table with the owner's decision in the answer column; `docs/DECISIONS.md` lists the
+decisions that changed what this document or the spec says.
+
 | Q | Question | Recommendation |
 |---|---|---|
 | Q1 | If the shared SPC cannot keep SGB or SNES output byte-identical (§4.3), what wins? | Keep gb's copy in tendy-gb for v0.1, and share later. Inertness beats sharing |
@@ -1686,14 +1698,14 @@ Gates that are not tests (every issue): `cargo build`, `cargo test`, `cargo fmt 
 | Q4 | Accept tendy-gba depending on tendy-gb? | Yes for v0.1. Move the shared link/state code to tendy-core only if a later issue needs it |
 | Q5 | Who ports the system-only front features (NES movies, TAS, run-ahead, HD packs, CRT/NTSC, shaders, RA, memview; GB link UI, debugger, LCD filter)? #15–#24 do not | #25, #26 and #27 become "port + parity checklist", each owning its `app/tendyemu/src/<system>/` folder. They run in parallel |
 | Q6 | Front-end test counts cannot stay equal: three menus become one | Each dropped front test is listed per system with the test that replaces it (§8 #25–#27). The equal-count gate applies to core imports (#6–#10) |
-| Q7 | Saves and states stay beside the ROM, as today, rather than moving into the config folder | Yes for v0.1. No save copy is needed, and nothing is lost |
+| Q7 | Where per-ROM files (battery save, state, screenshot, recording, cheats, movies) live | **Decided by the owner 2026-11-26: per-system folders** under the config folder (SPEC §7), not beside the ROMs. §6.3 gives the paths and the adopt-on-first-write rule that keeps the old apps' saves working |
 | Q8 | nes keeps its settings beside its executable | First-run offers a "Find the NES app folder" button (§6.5) |
 | Q9 | #36 "Check for updates" versus SPEC's offline rule | A menu row only, never automatic. It runs `curl` from PATH (shipped with Windows 10 and later, and most Linux) against the public releases page. No new dependency. It reports "cannot tell" when curl is missing or the machine is offline |
 | Q10 | The #11 scrub check in a public repo cannot list personal names | The tracked test holds generic patterns only (drive letters, home-folder paths, internal id shapes). Name patterns live in an untracked local file named by `TENDY_SCRUB_EXTRA` |
 | Q11 | nes's scrub load is large (about 1104 `#NNN` refs, 78 `PR-` refs, a personal name in one test file, an internal tool script) | Drop the tool script, strip the ids, keep the technical reasons in the comments |
 | Q12 | gb's about 33 examples are developer probes | Drop them from TendyEmu; they stay in the archived source |
 | Q13 | Archive entry cap | 64 MiB. The largest supported images (GBA 32 MiB, SNES ExHiROM 8 MiB) fit with room |
-| Q14 | Should `.sgb` or the `$0146` flag select the SGB model? | Not in v0.1 (parity). Backlog |
+| Q14 | Should `.sgb` or the `$0146` flag select the SGB model? | **Decided by the owner 2026-11-26: manual only.** SGB is a setting (the core already offers one); detection never selects it. The `.sgb`-by-header rule and auto-selection go to the backlog |
 | Q15 | New states are containers, which the old apps cannot read | Accept: old states load in TendyEmu, and the old apps are archived (#35) |
 
 ### 9.2 Risks
