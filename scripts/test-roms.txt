@@ -1,0 +1,27 @@
+# Public test ROMs the pin probes read (DESIGN §5.6, §10).
+#
+# Nothing here is committed: roms/ is gitignored and scripts/fetch-test-roms.sh writes into
+# roms/test/ (or into $TENDY_TEST_ROMS when it is set). Every public URL answered a download
+# and its sha256 and byte count are pinned below.
+#
+# Format: name|url|sha256|bytes|licence
+# A row whose sha256 is `-` is local-only: the owner supplies that file and the fetch script
+# skips it. The probes treat a missing local-only file as a skipped run, not a failure.
+#
+# Layout the probes expect under TENDY_TEST_ROMS:
+#   dmg-acid2.gb                          gb/dmg-acid2, gb/sgb
+#   cgb-acid2.gbc                         gb/cgb-acid2
+#   cpu_instrs.gb                         gb/cpu_instrs, gb/sgb-sound
+#   apu_test/rom_singles/1-len_ctr.nes    nes/cart (the first manifest entry that makes sound)
+#   snes-test-roms/<name>.sfc             snes/test-rom (unpacked by the fetch script)
+#   sgb-cartridge.bin                     gb/sgb-sound, local only
+#   fds-bios.rom, fds-game.fds            nes/fds, local only
+
+dmg-acid2.gb|https://github.com/mattcurrie/dmg-acid2/releases/download/v1.0/dmg-acid2.gb|464e14b7d42e7feea0b7ede42be7071dc88913f75b9ffa444299424b63d1dff1|32768|MIT, Copyright (c) 2020 Matt Currie (github.com/mattcurrie/dmg-acid2)
+cgb-acid2.gbc|https://github.com/mattcurrie/cgb-acid2/releases/download/v1.1/cgb-acid2.gbc|197fb0bcec544f0400527fc707e0a94f55435974986e6986b424ace5de81720e|32768|MIT, Copyright (c) 2020 Matt Currie (github.com/mattcurrie/cgb-acid2)
+cpu_instrs.gb|https://raw.githubusercontent.com/retrio/gb-test-roms/master/cpu_instrs/cpu_instrs.gb|8c5e12f41e0ba5bbca796944f92ffe6de28809198682c4332e38d1b3cf56fcf2|65536|Blargg; no formal licence, distributed for emulator testing and mirrored at github.com/retrio/gb-test-roms
+apu_test/rom_singles/1-len_ctr.nes|https://raw.githubusercontent.com/christopherpow/nes-test-roms/95d8f621ae55cee0d09b91519a8989ae0e64753b/apu_test/rom_singles/1-len_ctr.nes|aacf86c1d773badd11392e54506a43a06a3dd0b67a4c255909d1daf770a4a1e2|40976|Blargg; no formal licence, distributed for emulator testing and mirrored at github.com/christopherpow/nes-test-roms
+snes-test-roms.zip|https://github.com/undisbeliever/snes-test-roms/releases/download/v20210217/snes-test-roms-20210217.zip|00945927bee494317663accaeb21d854b6cdfef674813e6c119877a8eeacb1c4|45715|MIT, Copyright (c) 2021 undisbeliever (github.com/undisbeliever/snes-test-roms)
+sgb-cartridge.bin|-|-|-|owner-supplied Super Game Boy cartridge image, never committed
+fds-bios.rom|-|-|-|owner-supplied Famicom Disk System BIOS, never committed
+fds-game.fds|-|-|-|owner-supplied FDS disk image, never committed

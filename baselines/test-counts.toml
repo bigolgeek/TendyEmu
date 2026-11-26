@@ -1,0 +1,1337 @@
+# What `cargo test --release` reported at each source commit (DESIGN §5.1).
+# Per test file: passed and ignored. failed must be 0; the import gate runs the same
+# command at the import and compares these numbers per file.
+
+# What `cargo test --release` reported for gb at the pinned source commit
+# (DESIGN §5.1). Per file: tests that passed and tests the source marked #[ignore].
+# failed must be 0; a non-zero total in a pin run means the source is not reproducing.
+
+[gb]
+commit = "449154a"
+passed = 1068
+ignored = 30
+failed = 0
+
+[gb."src/boot.rs"]
+passed = 6
+ignored = 0
+
+[gb."src/cheats.rs"]
+passed = 8
+ignored = 0
+
+[gb."src/config.rs"]
+passed = 11
+ignored = 0
+
+[gb."src/display.rs"]
+passed = 6
+ignored = 0
+
+[gb."src/draw.rs"]
+passed = 8
+ignored = 0
+
+[gb."src/file_pick.rs"]
+passed = 2
+ignored = 0
+
+[gb."src/filter.rs"]
+passed = 10
+ignored = 0
+
+[gb."src/gamepad.rs"]
+passed = 12
+ignored = 0
+
+[gb."src/gba/arm.rs"]
+passed = 1
+ignored = 0
+
+[gb."src/gba/bios.rs"]
+passed = 3
+ignored = 0
+
+[gb."src/gba/bus.rs"]
+passed = 33
+ignored = 0
+
+[gb."src/gba/cart.rs"]
+passed = 5
+ignored = 0
+
+[gb."src/gba/cpu.rs"]
+passed = 24
+ignored = 0
+
+[gb."src/gba/dma.rs"]
+passed = 7
+ignored = 0
+
+[gb."src/gba/irq.rs"]
+passed = 2
+ignored = 0
+
+[gb."src/gba/mod.rs"]
+passed = 1
+ignored = 0
+
+[gb."src/gba/save.rs"]
+passed = 21
+ignored = 0
+
+[gb."src/gba/serial.rs"]
+passed = 3
+ignored = 0
+
+[gb."src/gba/sound.rs"]
+passed = 22
+ignored = 0
+
+[gb."src/gba/timer.rs"]
+passed = 8
+ignored = 0
+
+[gb."src/launch.rs"]
+passed = 7
+ignored = 0
+
+[gb."src/lib.rs"]
+passed = 6
+ignored = 0
+
+[gb."src/menu.rs"]
+passed = 9
+ignored = 0
+
+[gb."src/recents.rs"]
+passed = 2
+ignored = 0
+
+[gb."src/record.rs"]
+passed = 6
+ignored = 0
+
+[gb."src/rewind.rs"]
+passed = 4
+ignored = 0
+
+[gb."src/screenshot.rs"]
+passed = 4
+ignored = 0
+
+[gb."src/session_switch.rs"]
+passed = 3
+ignored = 0
+
+[gb."src/settings.rs"]
+passed = 11
+ignored = 0
+
+[gb."src/sgb/attr.rs"]
+passed = 1
+ignored = 0
+
+[gb."src/status_bar.rs"]
+passed = 15
+ignored = 0
+
+[gb."tests/acid2.rs"]
+passed = 0
+ignored = 2
+
+[gb."tests/apu.rs"]
+passed = 22
+ignored = 0
+
+[gb."tests/audio_ring.rs"]
+passed = 12
+ignored = 0
+
+[gb."tests/audio_sinc.rs"]
+passed = 16
+ignored = 0
+
+[gb."tests/boot.rs"]
+passed = 14
+ignored = 1
+
+[gb."tests/cart.rs"]
+passed = 20
+ignored = 0
+
+[gb."tests/cgb.rs"]
+passed = 24
+ignored = 0
+
+[gb."tests/cheats.rs"]
+passed = 10
+ignored = 0
+
+[gb."tests/checksum.rs"]
+passed = 2
+ignored = 0
+
+[gb."tests/compat.rs"]
+passed = 7
+ignored = 0
+
+[gb."tests/config.rs"]
+passed = 22
+ignored = 0
+
+[gb."tests/console.rs"]
+passed = 5
+ignored = 2
+
+[gb."tests/cpu.rs"]
+passed = 25
+ignored = 3
+
+[gb."tests/debugger.rs"]
+passed = 37
+ignored = 2
+
+[gb."tests/diag.rs"]
+passed = 0
+ignored = 4
+
+[gb."tests/display.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/filter.rs"]
+passed = 10
+ignored = 0
+
+[gb."tests/frameskip.rs"]
+passed = 3
+ignored = 0
+
+[gb."tests/front_end.rs"]
+passed = 5
+ignored = 0
+
+[gb."tests/gba.rs"]
+passed = 17
+ignored = 3
+
+[gb."tests/gba_bios.rs"]
+passed = 56
+ignored = 4
+
+[gb."tests/gba_bios_vector.rs"]
+passed = 2
+ignored = 0
+
+[gb."tests/gba_cnes_save.rs"]
+passed = 3
+ignored = 0
+
+[gb."tests/gba_core.rs"]
+passed = 23
+ignored = 0
+
+[gb."tests/gba_cpuset.rs"]
+passed = 7
+ignored = 0
+
+[gb."tests/gba_link.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/gba_link_socket.rs"]
+passed = 2
+ignored = 0
+
+[gb."tests/gba_link_wire.rs"]
+passed = 6
+ignored = 0
+
+[gb."tests/gba_rewind.rs"]
+passed = 6
+ignored = 0
+
+[gb."tests/gba_save.rs"]
+passed = 11
+ignored = 4
+
+[gb."tests/gba_sound.rs"]
+passed = 9
+ignored = 0
+
+[gb."tests/gba_sound_driver.rs"]
+passed = 20
+ignored = 0
+
+[gb."tests/gba_timing.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/gba_video.rs"]
+passed = 27
+ignored = 3
+
+[gb."tests/interrupts.rs"]
+passed = 7
+ignored = 0
+
+[gb."tests/launch.rs"]
+passed = 9
+ignored = 0
+
+[gb."tests/link.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/mbc.rs"]
+passed = 16
+ignored = 0
+
+[gb."tests/menu.rs"]
+passed = 29
+ignored = 0
+
+[gb."tests/ppu.rs"]
+passed = 29
+ignored = 0
+
+[gb."tests/record.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/save.rs"]
+passed = 9
+ignored = 0
+
+[gb."tests/scaffold.rs"]
+passed = 6
+ignored = 0
+
+[gb."tests/serial.rs"]
+passed = 3
+ignored = 0
+
+[gb."tests/sgb.rs"]
+passed = 1
+ignored = 0
+
+[gb."tests/sgb_areas.rs"]
+passed = 22
+ignored = 0
+
+[gb."tests/sgb_art.rs"]
+passed = 8
+ignored = 0
+
+[gb."tests/sgb_attr.rs"]
+passed = 11
+ignored = 0
+
+[gb."tests/sgb_border.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/sgb_packets.rs"]
+passed = 14
+ignored = 0
+
+[gb."tests/sgb_palettes.rs"]
+passed = 10
+ignored = 0
+
+[gb."tests/sgb_show.rs"]
+passed = 3
+ignored = 0
+
+[gb."tests/sgb_sound.rs"]
+passed = 20
+ignored = 2
+
+[gb."tests/sgb_spc.rs"]
+passed = 36
+ignored = 0
+
+[gb."tests/sgb_trn.rs"]
+passed = 11
+ignored = 0
+
+[gb."tests/state.rs"]
+passed = 22
+ignored = 0
+
+[gb."tests/system.rs"]
+passed = 2
+ignored = 0
+
+[gb."tests/thumb.rs"]
+passed = 4
+ignored = 0
+
+[gb."tests/timer.rs"]
+passed = 7
+ignored = 0
+
+[gb."tests/trace_pc.rs"]
+passed = 5
+ignored = 0
+
+[gb."tests/vdma.rs"]
+passed = 13
+ignored = 0
+
+[gb."tests/wram.rs"]
+passed = 9
+ignored = 0
+
+# What `cargo test --release` reported for nes at the pinned source commit
+# (DESIGN §5.1). Per file: tests that passed and tests the source marked #[ignore].
+# failed must be 0; a non-zero total in a pin run means the source is not reproducing.
+
+[nes]
+commit = "efc1e3c"
+passed = 2604
+ignored = 12
+failed = 0
+
+[nes."src/apu/dmc.rs"]
+passed = 12
+ignored = 0
+
+[nes."src/apu/eq.rs"]
+passed = 6
+ignored = 0
+
+[nes."src/apu/expansion/fds.rs"]
+passed = 14
+ignored = 0
+
+[nes."src/apu/expansion/n163.rs"]
+passed = 14
+ignored = 0
+
+[nes."src/apu/expansion/opll.rs"]
+passed = 15
+ignored = 0
+
+[nes."src/apu/expansion/vrc6.rs"]
+passed = 11
+ignored = 0
+
+[nes."src/apu/expansion/ym2149.rs"]
+passed = 18
+ignored = 0
+
+[nes."src/apu/filter.rs"]
+passed = 14
+ignored = 0
+
+[nes."src/apu/gain.rs"]
+passed = 13
+ignored = 0
+
+[nes."src/apu/mod.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/apu/noise.rs"]
+passed = 7
+ignored = 0
+
+[nes."src/apu/overlay.rs"]
+passed = 9
+ignored = 0
+
+[nes."src/apu/pulse.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/apu/state.rs"]
+passed = 7
+ignored = 0
+
+[nes."src/apu/synth.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/apu/triangle.rs"]
+passed = 9
+ignored = 0
+
+[nes."src/apu/units.rs"]
+passed = 12
+ignored = 0
+
+[nes."src/apu/viewer.rs"]
+passed = 19
+ignored = 0
+
+[nes."src/audio.rs"]
+passed = 11
+ignored = 0
+
+[nes."src/avi.rs"]
+passed = 3
+ignored = 0
+
+[nes."src/bus.rs"]
+passed = 15
+ignored = 0
+
+[nes."src/cart.rs"]
+passed = 43
+ignored = 0
+
+[nes."src/cdl.rs"]
+passed = 2
+ignored = 0
+
+[nes."src/cheatdb.rs"]
+passed = 49
+ignored = 0
+
+[nes."src/cheats.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/checksum.rs"]
+passed = 6
+ignored = 0
+
+[nes."src/config.rs"]
+passed = 50
+ignored = 0
+
+[nes."src/console.rs"]
+passed = 11
+ignored = 0
+
+[nes."src/controller.rs"]
+passed = 20
+ignored = 0
+
+[nes."src/cpu/opcodes.rs"]
+passed = 12
+ignored = 0
+
+[nes."src/cpu/state.rs"]
+passed = 3
+ignored = 0
+
+[nes."src/crt.rs"]
+passed = 14
+ignored = 0
+
+[nes."src/debugger.rs"]
+passed = 16
+ignored = 0
+
+[nes."src/display.rs"]
+passed = 11
+ignored = 0
+
+[nes."src/draw.rs"]
+passed = 12
+ignored = 0
+
+[nes."src/events.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/file_pick.rs"]
+passed = 1
+ignored = 0
+
+[nes."src/gamedb.rs"]
+passed = 10
+ignored = 0
+
+[nes."src/gamepad.rs"]
+passed = 21
+ignored = 0
+
+[nes."src/genie.rs"]
+passed = 11
+ignored = 0
+
+[nes."src/keys.rs"]
+passed = 27
+ignored = 0
+
+[nes."src/launch.rs"]
+passed = 111
+ignored = 0
+
+[nes."src/lib.rs"]
+passed = 144
+ignored = 0
+
+[nes."src/mapper/axrom.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/bnrom.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/camerica.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/cnrom.rs"]
+passed = 2
+ignored = 0
+
+[nes."src/mapper/color_dreams.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/fds.rs"]
+passed = 27
+ignored = 0
+
+[nes."src/mapper/flash.rs"]
+passed = 18
+ignored = 0
+
+[nes."src/mapper/fme7.rs"]
+passed = 15
+ignored = 0
+
+[nes."src/mapper/gxrom.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/mmc1.rs"]
+passed = 24
+ignored = 0
+
+[nes."src/mapper/mmc2_mmc4.rs"]
+passed = 4
+ignored = 0
+
+[nes."src/mapper/mmc3.rs"]
+passed = 33
+ignored = 0
+
+[nes."src/mapper/mmc5.rs"]
+passed = 30
+ignored = 0
+
+[nes."src/mapper/mod.rs"]
+passed = 16
+ignored = 0
+
+[nes."src/mapper/n163.rs"]
+passed = 27
+ignored = 0
+
+[nes."src/mapper/nrom.rs"]
+passed = 18
+ignored = 0
+
+[nes."src/mapper/uxrom.rs"]
+passed = 7
+ignored = 0
+
+[nes."src/mapper/vrc2_4.rs"]
+passed = 22
+ignored = 0
+
+[nes."src/mapper/vrc6.rs"]
+passed = 14
+ignored = 0
+
+[nes."src/mapper/vrc7.rs"]
+passed = 12
+ignored = 0
+
+[nes."src/memview.rs"]
+passed = 19
+ignored = 0
+
+[nes."src/menu.rs"]
+passed = 43
+ignored = 0
+
+[nes."src/movie.rs"]
+passed = 38
+ignored = 0
+
+[nes."src/nes.rs"]
+passed = 18
+ignored = 0
+
+[nes."src/nsf.rs"]
+passed = 22
+ignored = 0
+
+[nes."src/ntsc.rs"]
+passed = 7
+ignored = 0
+
+[nes."src/patch.rs"]
+passed = 21
+ignored = 0
+
+[nes."src/ppu/memory.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/ppu/mod.rs"]
+passed = 7
+ignored = 0
+
+[nes."src/ppu/overlay.rs"]
+passed = 22
+ignored = 0
+
+[nes."src/ppu/palette.rs"]
+passed = 45
+ignored = 0
+
+[nes."src/ppu/render.rs"]
+passed = 5
+ignored = 0
+
+[nes."src/ppu/state.rs"]
+passed = 3
+ignored = 0
+
+[nes."src/ppu/trace.rs"]
+passed = 8
+ignored = 0
+
+[nes."src/ppu/viewer.rs"]
+passed = 22
+ignored = 0
+
+[nes."src/profiler.rs"]
+passed = 1
+ignored = 0
+
+[nes."src/ra.rs"]
+passed = 17
+ignored = 0
+
+[nes."src/recents.rs"]
+passed = 9
+ignored = 0
+
+[nes."src/rewind.rs"]
+passed = 10
+ignored = 0
+
+[nes."src/rng.rs"]
+passed = 10
+ignored = 0
+
+[nes."src/save.rs"]
+passed = 15
+ignored = 0
+
+[nes."src/screenshot.rs"]
+passed = 5
+ignored = 0
+
+[nes."src/session_switch.rs"]
+passed = 3
+ignored = 0
+
+[nes."src/settings.rs"]
+passed = 23
+ignored = 0
+
+[nes."src/shader.rs"]
+passed = 5
+ignored = 0
+
+[nes."src/state.rs"]
+passed = 6
+ignored = 0
+
+[nes."src/status_bar.rs"]
+passed = 25
+ignored = 0
+
+[nes."src/symbols.rs"]
+passed = 10
+ignored = 0
+
+[nes."src/timing.rs"]
+passed = 15
+ignored = 0
+
+[nes."src/watch.rs"]
+passed = 17
+ignored = 0
+
+[nes."tests/it/accuracycoin.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/achievements.rs"]
+passed = 3
+ignored = 0
+
+[nes."tests/it/alignment_matrix.rs"]
+passed = 0
+ignored = 1
+
+[nes."tests/it/apu_frame_counter.rs"]
+passed = 18
+ignored = 0
+
+[nes."tests/it/apu_state_layout.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/audio_mixer.rs"]
+passed = 15
+ignored = 0
+
+[nes."tests/it/audio_output.rs"]
+passed = 26
+ignored = 0
+
+[nes."tests/it/avi.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/blargg_more.rs"]
+passed = 24
+ignored = 0
+
+[nes."tests/it/blargg_vbl_apu.rs"]
+passed = 12
+ignored = 0
+
+[nes."tests/it/bus_map.rs"]
+passed = 4
+ignored = 0
+
+[nes."tests/it/cart_hook_flags.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/cdl.rs"]
+passed = 7
+ignored = 0
+
+[nes."tests/it/cheatdb_launch.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/clocked_bus.rs"]
+passed = 4
+ignored = 0
+
+[nes."tests/it/console_quirks.rs"]
+passed = 26
+ignored = 0
+
+[nes."tests/it/controller_input.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/cpu_alu.rs"]
+passed = 20
+ignored = 0
+
+[nes."tests/it/cpu_control_flow.rs"]
+passed = 17
+ignored = 0
+
+[nes."tests/it/cpu_core.rs"]
+passed = 26
+ignored = 0
+
+[nes."tests/it/cpu_instructions.rs"]
+passed = 28
+ignored = 0
+
+[nes."tests/it/cpu_jam.rs"]
+passed = 2
+ignored = 0
+
+[nes."tests/it/cpu_opcodes.rs"]
+passed = 1
+ignored = 0
+
+[nes."tests/it/cpu_reset.rs"]
+passed = 2
+ignored = 0
+
+[nes."tests/it/cpu_roms.rs"]
+passed = 17
+ignored = 0
+
+[nes."tests/it/determinism.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/emphasis.rs"]
+passed = 4
+ignored = 0
+
+[nes."tests/it/events_bus.rs"]
+passed = 2
+ignored = 0
+
+[nes."tests/it/expansion_audio.rs"]
+passed = 21
+ignored = 0
+
+[nes."tests/it/expansion_port.rs"]
+passed = 15
+ignored = 0
+
+[nes."tests/it/fds.rs"]
+passed = 12
+ignored = 0
+
+[nes."tests/it/flash_save.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/four_score.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/game_snapshots.rs"]
+passed = 1
+ignored = 0
+
+[nes."tests/it/genie_apply.rs"]
+passed = 3
+ignored = 0
+
+[nes."tests/it/hdpack.rs"]
+passed = 36
+ignored = 0
+
+[nes."tests/it/history.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/history_view.rs"]
+passed = 14
+ignored = 0
+
+[nes."tests/it/joypad_ports.rs"]
+passed = 3
+ignored = 0
+
+[nes."tests/it/keys.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/mapper111.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/mapper228.rs"]
+passed = 11
+ignored = 1
+
+[nes."tests/it/mapper30.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/mapper_hooks.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/mapper_mmc2_mmc4.rs"]
+passed = 25
+ignored = 0
+
+[nes."tests/it/mapper_short_prg.rs"]
+passed = 2
+ignored = 0
+
+[nes."tests/it/mappers_core.rs"]
+passed = 18
+ignored = 0
+
+[nes."tests/it/mappers_discrete.rs"]
+passed = 96
+ignored = 0
+
+[nes."tests/it/mappers_tranche_b.rs"]
+passed = 10
+ignored = 0
+
+[nes."tests/it/mmc1_battery.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/mmc1_surom.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/mmc3.rs"]
+passed = 7
+ignored = 0
+
+[nes."tests/it/mmc3_old_roms.rs"]
+passed = 14
+ignored = 0
+
+[nes."tests/it/mmc3_roms.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/movie.rs"]
+passed = 20
+ignored = 0
+
+[nes."tests/it/nmi_race.rs"]
+passed = 1
+ignored = 1
+
+[nes."tests/it/nsf.rs"]
+passed = 14
+ignored = 0
+
+[nes."tests/it/nsf_launch.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/overclock.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/power_pad.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/ppu_background.rs"]
+passed = 10
+ignored = 0
+
+[nes."tests/it/ppu_core.rs"]
+passed = 20
+ignored = 0
+
+[nes."tests/it/ppu_emphasis.rs"]
+passed = 3
+ignored = 0
+
+[nes."tests/it/ppu_glitches.rs"]
+passed = 25
+ignored = 0
+
+[nes."tests/it/ppu_sprites.rs"]
+passed = 29
+ignored = 0
+
+[nes."tests/it/profiler.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/ram_watch.rs"]
+passed = 3
+ignored = 0
+
+[nes."tests/it/raw_ram_cheats.rs"]
+passed = 7
+ignored = 0
+
+[nes."tests/it/region_timing.rs"]
+passed = 21
+ignored = 0
+
+[nes."tests/it/reset_align.rs"]
+passed = 5
+ignored = 0
+
+[nes."tests/it/runahead.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/save_state.rs"]
+passed = 9
+ignored = 0
+
+[nes."tests/it/saves.rs"]
+passed = 7
+ignored = 0
+
+[nes."tests/it/screen_text.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/shared_helpers.rs"]
+passed = 1
+ignored = 0
+
+[nes."tests/it/sst_cpu.rs"]
+passed = 1
+ignored = 0
+
+[nes."tests/it/state_mappers.rs"]
+passed = 23
+ignored = 0
+
+[nes."tests/it/state_roundtrip.rs"]
+passed = 10
+ignored = 0
+
+[nes."tests/it/submappers.rs"]
+passed = 18
+ignored = 0
+
+[nes."tests/it/symbols.rs"]
+passed = 10
+ignored = 0
+
+[nes."tests/it/tasedit.rs"]
+passed = 9
+ignored = 0
+
+[nes."tests/it/tasvideos.rs"]
+passed = 40
+ignored = 0
+
+[nes."tests/it/tasvideos_movies.rs"]
+passed = 4
+ignored = 3
+
+[nes."tests/it/trace.rs"]
+passed = 6
+ignored = 0
+
+[nes."tests/it/trace_log.rs"]
+passed = 8
+ignored = 0
+
+[nes."tests/it/trace_peek.rs"]
+passed = 4
+ignored = 0
+
+[nes."tests/it/unif.rs"]
+passed = 24
+ignored = 0
+
+[nes."tests/it/vs_system.rs"]
+passed = 7
+ignored = 0
+
+[nes."tests/it/zapper.rs"]
+passed = 4
+ignored = 0
+
+[nes."tests/jit_perf.rs"]
+passed = 0
+ignored = 3
+
+[nes."tests/ntsc_alloc.rs"]
+passed = 1
+ignored = 0
+
+[nes."tests/ppu_perf.rs"]
+passed = 1
+ignored = 3
+
+[nes."tests/save_state_alloc.rs"]
+passed = 2
+ignored = 0
+
+# What `cargo test --release` reported for snes at the pinned source commit
+# (DESIGN §5.1). Per file: tests that passed and tests the source marked #[ignore].
+# failed must be 0; a non-zero total in a pin run means the source is not reproducing.
+
+[snes]
+commit = "bf3c60b"
+passed = 297
+ignored = 76
+failed = 0
+
+[snes."tests/apu.rs"]
+passed = 12
+ignored = 0
+
+[snes."tests/apu_ports.rs"]
+passed = 3
+ignored = 0
+
+[snes."tests/audio_path.rs"]
+passed = 3
+ignored = 0
+
+[snes."tests/audio_stats.rs"]
+passed = 4
+ignored = 0
+
+[snes."tests/blank11_probe.rs"]
+passed = 0
+ignored = 3
+
+[snes."tests/cart.rs"]
+passed = 14
+ignored = 0
+
+[snes."tests/census_probe.rs"]
+passed = 0
+ignored = 14
+
+[snes."tests/checksum.rs"]
+passed = 2
+ignored = 0
+
+[snes."tests/config.rs"]
+passed = 6
+ignored = 0
+
+[snes."tests/cpu.rs"]
+passed = 23
+ignored = 0
+
+[snes."tests/data_block_probe.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/display.rs"]
+passed = 5
+ignored = 0
+
+[snes."tests/dma.rs"]
+passed = 17
+ignored = 0
+
+[snes."tests/dsp.rs"]
+passed = 20
+ignored = 0
+
+[snes."tests/firstdiv_probe.rs"]
+passed = 4
+ignored = 1
+
+[snes."tests/front_end.rs"]
+passed = 3
+ignored = 0
+
+[snes."tests/hello2_probe.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/image_cpu.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/image_dma.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/image_mode1.rs"]
+passed = 1
+ignored = 0
+
+[snes."tests/interrupts.rs"]
+passed = 19
+ignored = 0
+
+[snes."tests/job018_halt.rs"]
+passed = 0
+ignored = 3
+
+[snes."tests/joypad.rs"]
+passed = 8
+ignored = 0
+
+[snes."tests/launch.rs"]
+passed = 5
+ignored = 2
+
+[snes."tests/layers.rs"]
+passed = 29
+ignored = 0
+
+[snes."tests/map.rs"]
+passed = 12
+ignored = 0
+
+[snes."tests/menu.rs"]
+passed = 8
+ignored = 0
+
+[snes."tests/nmi_stall_probe.rs"]
+passed = 0
+ignored = 15
+
+[snes."tests/note_params_probe.rs"]
+passed = 0
+ignored = 5
+
+[snes."tests/port3_probe.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/port_probe.rs"]
+passed = 0
+ignored = 3
+
+[snes."tests/ppu.rs"]
+passed = 14
+ignored = 0
+
+[snes."tests/probe_brightness.rs"]
+passed = 1
+ignored = 0
+
+[snes."tests/readlog_probe.rs"]
+passed = 5
+ignored = 1
+
+[snes."tests/regvalue_probe.rs"]
+passed = 3
+ignored = 5
+
+[snes."tests/save.rs"]
+passed = 6
+ignored = 0
+
+[snes."tests/scaffold.rs"]
+passed = 6
+ignored = 0
+
+[snes."tests/scpu_flow_probe.rs"]
+passed = 0
+ignored = 1
+
+[snes."tests/spc700.rs"]
+passed = 32
+ignored = 0
+
+[snes."tests/spc_flow_probe.rs"]
+passed = 1
+ignored = 11
+
+[snes."tests/spc_trace.rs"]
+passed = 4
+ignored = 0
+
+[snes."tests/spc_trace_probe.rs"]
+passed = 0
+ignored = 3
+
+[snes."tests/sprites.rs"]
+passed = 8
+ignored = 0
+
+[snes."tests/state.rs"]
+passed = 4
+ignored = 3
+
+[snes."tests/tile_fetch.rs"]
+passed = 4
+ignored = 0
+
+[snes."tests/timing.rs"]
+passed = 7
+ignored = 0
+
+[snes."tests/writelog_probe.rs"]
+passed = 4
+ignored = 1

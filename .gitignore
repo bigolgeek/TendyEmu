@@ -21,6 +21,7 @@ roms/
 config.toml
 recents.txt
 scratch/
+tools/pin/.work/
 # os noise
 .DS_Store
 Thumbs.db
