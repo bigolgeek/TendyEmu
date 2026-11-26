@@ -1274,16 +1274,21 @@ Recommendation: (a). It keeps principle 3 (import first, improve later).
 5. **Counts are gated per source file.** #5 records, for each source test file, the passed and ignored counts that
    `cargo test` reports at the source commit, in `baselines/test-counts.toml`. An import is done when every file it
    moved reports the same numbers.
-6. **Never build in the source folders.** #5 clones each source commit into a temporary folder and runs the probes
-   and `cargo test` there.
+6. **Never build in the source folders.** `tools/pin` path-depends on a source checkout through a throwaway crate
+   under `tools/pin/.work/<system>`, builds into `tools/pin/target/<system>`, and writes nothing into the source
+   tree. Measured pins are `baselines/pins.toml`, one `[system/run]` section per run.
 
-Test inventory at the source commits (counted with `grep` over `#[test]` and `#[ignore]`; `cargo test` numbers come from #5):
+Test inventory, as measured by `cargo test --release --no-fail-fast` at each source commit (#5; the pins are
+`baselines/test-counts.toml`, per file):
 
-| Source | Integration `#[test]` | Integration `#[ignore]` | Unit tests in `src/` | Notes |
+| Source | Test files | Passed | Ignored | Notes |
 |---|---|---|---|---|
-| gb | 837 | 38 | yes (e.g. `config` 11, `gba/bus` 33, `gba/cpu` 24, `status_bar` 15) | last full run at the source: 1072 passed, 0 failed, 30 ignored |
-| nes | 1050 | 14 | yes | one binary `tests/it/main.rs` (about 90 modules) + 4 standalone binaries. The 14 `#[ignore = ...]` attributes: 6 in `tests/it` (`alignment_matrix`, `mapper228`, `nmi_race`, 3 in `tasvideos_movies`), 3 in `jit_perf`, 5 in `ppu_perf`; the other 4 of the 18 grep mentions in `tests/` are prose comments |
-| snes | 373 | 95 | none | 47 test files |
+| gb | 93 | 1068 | 30 | 0 failed |
+| nes | 186 | 2604 | 12 | 0 failed; all targets, not one binary. `tests/it` alone is the 1050 figure the design first quoted |
+| snes | 47 | 297 | 76 | 0 failed; 373 tests in total |
+
+The NES suite needs its own `tools/fetch_test_roms.py` (195 public ROMs) before `--test it` and `--test ppu_perf`
+run. A source folder without them reports failures that are missing files, not bad code.
 
 ### 5.2 tendy-gb (#7)
 
@@ -1367,8 +1372,10 @@ How the pins are taken:
   - gb: the `System` trait;
   - snes: the `System` trait;
   - nes: `struct Nes`.
-- **Where they run.** #5 copies each probe into a temporary clone of the source commit as an example, and runs it
-  in release mode there. The output goes to `baselines/<system>.pins` (format: `pin::parse`).
+- **Where they run.** `tools/pin` is a non-workspace crate. For a run it generates a throwaway crate under
+  `tools/pin/.work/<system>` that path-depends on the source checkout, builds into `tools/pin/target/<system>`, and
+  writes nothing into the source tree. Output is `baselines/pins.toml`, one `[system/run]` section per run (format:
+  `pin::parse`).
 - **Where they are checked.** After each import, `crates/<core>/tests/inertness.rs` runs the same steps on the
   imported core and compares every pin.
 - **ROMs.** They are found through the environment variable `TENDY_TEST_ROMS` (a folder), never a path in the
@@ -1396,8 +1403,15 @@ Definitions:
   over the drained samples as little-endian `f32` bytes, in order.
 - **NES audio hash.** NES has no stereo drain, so its probe hashes each frame's `apu.samples` and then
   `apu.samples_right`. The wrapper's `drain_audio` interleaves them; that is tested separately in `nes_drain_interleaves`.
-- **Test counts.** #5 also writes `baselines/test-counts.toml`: per source and per test file, the `passed` and
-  `ignored` counts from `cargo test --release` at the source commit.
+What the pins do **not** cover at these commits (#5 measured):
+
+- **SNES audio is idle.** No ROM in `snes-test-roms` v20210217 plays music, so the DSP hash records silence (peak
+  0.000031). It proves the path runs, not that it sounds right.
+- **SNES state is a scaffold.** `encode_state` (`snes src/machine.rs:142`) writes the version and three counters —
+  38 bytes — and no device state. The pin is real but pins nothing a device change would move.
+- **SGB sound and FDS runs are skipped** until the owner supplies `sgb-cartridge.bin`, `fds-bios.rom` and
+  `fds-game.fds` in `TENDY_TEST_ROMS`. Those two paths import without a baseline.
+
 
 ---
 
@@ -1720,6 +1734,7 @@ decisions that changed what this document or the spec says.
 | Two checkouts sharing one `CARGO_TARGET_DIR` | cargo can run the other checkout's stale build, and tests pass on old code | Each worktree or clone uses its own target folder (#5 clones included) |
 | `Cargo.lock` conflicts between lanes | merge friction | Regenerate; never merge by hand (§7.1) |
 | Test ROM licences: nes's fetch script states its ROMs have unclear licences | they cannot be committed | Fetched or local only; never committed (§10) |
+| SNES save states are a scaffold at `bf3c60b` (`src/machine.rs:142` saves a version and three counters, 38 bytes, no device state) | saving a SNES state appears to work and restores nothing; loading rewinds only the frame counter | Decision in #69: gate the save/load/rewind rows on a capability SNES does not report until device serialisation exists. GB, GBA and NES states are real (137 KB, 550 KB, full RAM) |
 | Edition 2024 | needs Rust 1.85 or newer | State it in the README (#31) |
 
 ### 9.3 UNVERIFIED items (each with the check that settles it)
