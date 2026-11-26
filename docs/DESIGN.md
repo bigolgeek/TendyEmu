@@ -1584,6 +1584,9 @@ Building before dropping costs one core's memory for a moment. In return, a refu
    - Changelog: each PR writes `changelog.d/<issue>.md`, and #33 joins them. No PR edits a shared `CHANGELOG.md`.
 4. #4 writes every `Cargo.toml` with all its dependencies (§1.2), so no later issue edits a manifest. The exception
    is #6: it adds `tendy-spc` to the tendy-gb and tendy-snes manifests.
+5. #4 left `use <dep> as _;` in each crate so that no manifest is edited after the scaffold (cargo 1.100 warns on a
+   dependency a crate does not use yet). Every import issue removes the placeholders of the crates it owns; nothing
+   else may add them back.
 
 ### 7.2 Table
 
