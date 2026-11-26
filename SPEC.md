@@ -1,6 +1,6 @@
 # TendyEmu — Specification v0.1
 
-Status: **draft, awaiting approval.** No code is written until this spec is approved.
+Status: **approved 2026-11-26** (#1). Changes from here on go through an issue.
 Every piece of work below is a GitHub issue; this file says what the pieces are and how they fit.
 
 ## 1. What TendyEmu is
