@@ -1,0 +1,11 @@
+[package]
+name = "tendy-detect"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tendy-core.workspace = true
+tendy-snes.workspace = true
+sevenz-rust2.workspace = true
+zip.workspace = true

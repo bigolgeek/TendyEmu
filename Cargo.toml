@@ -1,0 +1,29 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "app/tendyemu"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+tendy-core = { path = "crates/tendy-core" }
+tendy-detect = { path = "crates/tendy-detect" }
+tendy-spc = { path = "crates/tendy-spc" }
+tendy-gb = { path = "crates/tendy-gb" }
+tendy-gba = { path = "crates/tendy-gba" }
+tendy-nes = { path = "crates/tendy-nes" }
+tendy-snes = { path = "crates/tendy-snes" }
+cpal = "0.18"
+libm = "0.2"
+macroquad = "0.4"
+png = "0.17"
+rfd = "0.17.2"
+sevenz-rust2 = { version = "0.25", default-features = false, features = ["compress", "ppmd"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
