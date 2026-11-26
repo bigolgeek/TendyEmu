@@ -1,0 +1,18 @@
+[package]
+name = "tendyemu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tendy-core.workspace = true
+tendy-detect.workspace = true
+tendy-spc.workspace = true
+tendy-gb.workspace = true
+tendy-gba.workspace = true
+tendy-nes.workspace = true
+tendy-snes.workspace = true
+cpal.workspace = true
+macroquad.workspace = true
+rfd.workspace = true
+png.workspace = true

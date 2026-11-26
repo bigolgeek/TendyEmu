@@ -1,0 +1,9 @@
+[package]
+name = "tendy-gb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tendy-core.workspace = true
+libm.workspace = true

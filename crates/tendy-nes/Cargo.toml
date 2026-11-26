@@ -1,0 +1,11 @@
+[package]
+name = "tendy-nes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tendy-core.workspace = true
+libm.workspace = true
+png.workspace = true
+zip.workspace = true
