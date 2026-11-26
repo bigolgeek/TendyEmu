@@ -3,6 +3,9 @@
 Status: **approved 2026-11-26** (#1). Changes from here on go through an issue.
 Every piece of work below is a GitHub issue; this file says what the pieces are and how they fit.
 
+Where design work proved a fact below wrong, DESIGN.md §3.6 lists the correction (C1-C10) and that
+correction governs; this file is amended only when the owner asks for it.
+
 ## 1. What TendyEmu is
 
 One desktop application that plays Game Boy, Game Boy Color, Super Game Boy, Game Boy Advance,
