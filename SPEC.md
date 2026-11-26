@@ -156,16 +156,16 @@ is post-v0.1 work, one issue per feature.
 
 ## 9. Work plan (milestones)
 
-| # | milestone | contents |
-|---|---|---|
-| M0 | Spec | this file, the issue list; **gate: owner approves** |
-| M1 | Design | `docs/DESIGN.md` (exact declarations, file split, order), cross-model review; **gate: review passed** |
-| M2 | Workspace + import | scaffold; import `tendy-spc`, `tendy-gb`, `tendy-gba`, `tendy-nes`, `tendy-snes`, each proved inert |
-| M3 | Detection | `tendy-detect` with the §4 tests |
-| M4 | One app | `app/tendyemu`: shared shell, capabilities, per-system input, system switching, settings import |
-| M5 | Parity | every feature of §6 reachable; parity checklist per old app |
-| M6 | Release 0.1.0 | README, licence notices, Windows + Linux builds, release notes |
-| — | Backlog | open issues carried over from the source projects, and post-v0.1 features |
+| # | milestone | contents | issues |
+|---|---|---|---|
+| M0 | Spec | this file, the issue list; **gate: owner approves** | #1 |
+| M1 | Design | `docs/DESIGN.md` (exact declarations, file split, order), cross-model review; **gate: review passed** | #2-#3 |
+| M2 | Workspace + import | scaffold; import `tendy-spc`, `tendy-gb`, `tendy-gba`, `tendy-nes`, `tendy-snes`, each proved inert | #4-#11 |
+| M3 | Detection | `tendy-detect` with the §4 tests | #12-#14 |
+| M4 | One app | `app/tendyemu`: shared shell, capabilities, per-system input, system switching, settings import | #15-#24 |
+| M5 | Parity | every feature of §6 reachable; parity checklist per old app | #25-#30 |
+| M6 | Release 0.1.0 | README, licence notices, Windows + Linux builds, release notes | #31-#36 |
+| — | Backlog | open issues carried over from the source projects, and post-v0.1 features | #37-#67 |
 
 ## 10. Out of scope for v0.1
 
