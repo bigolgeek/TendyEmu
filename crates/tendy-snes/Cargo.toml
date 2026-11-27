@@ -6,3 +6,4 @@ license.workspace = true
 
 [dependencies]
 tendy-core.workspace = true
+tendy-spc.workspace = true

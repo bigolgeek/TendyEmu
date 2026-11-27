@@ -27,13 +27,16 @@ fn probe(system: &str) -> Option<(&'static str, &'static str, &'static str)> {
         "gba" => Some(("gb", "gb-rust", "gba.rs")),
         "nes" => Some(("nes", "nes", "nes.rs")),
         "snes" => Some(("snes", "snes-rust", "snes.rs")),
+        // #6's synthetic sound pin: the same SPC700 program through each host's own entry point.
+        "spc-snes" => Some(("snes", "snes-rust", "spc_snes.rs")),
+        "spc-sgb" => Some(("gb", "gb-rust", "spc_sgb.rs")),
         _ => None,
     }
 }
 
 fn usage() -> ! {
     eprintln!(
-        "usage: tendy-pin <gb|gba|nes|snes> --source <source checkout> [--out <pin file>] [probe args...]"
+        "usage: tendy-pin <gb|gba|nes|snes|spc-snes|spc-sgb> --source <source checkout> [--out <pin file>] [probe args...]"
     );
     std::process::exit(2)
 }

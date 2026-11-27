@@ -1,0 +1,3 @@
+seg	id=1,name="CODE",start=0x8000,size=0x0040,addrsize=abs,type=ro
+sym	id=5,name="broken",addrsize=abs,scope=1,seg=1,type=lab
+sym	id=6,name="bytype",addrsize=abs,scope=1,val=0x8010,type=weird

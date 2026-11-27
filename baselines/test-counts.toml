@@ -390,7 +390,7 @@ ignored = 0
 
 [nes]
 commit = "efc1e3c"
-passed = 2604
+passed = 2460
 ignored = 12
 failed = 0
 
@@ -563,7 +563,7 @@ passed = 111
 ignored = 0
 
 [nes."src/lib.rs"]
-passed = 144
+passed = 1
 ignored = 0
 
 [nes."src/mapper/axrom.rs"]
@@ -1135,7 +1135,7 @@ passed = 1
 ignored = 3
 
 [nes."tests/save_state_alloc.rs"]
-passed = 2
+passed = 1
 ignored = 0
 
 # What `cargo test --release` reported for snes at the pinned source commit
@@ -1145,7 +1145,7 @@ ignored = 0
 [snes]
 commit = "bf3c60b"
 passed = 297
-ignored = 76
+ignored = 73
 failed = 0
 
 [snes."tests/apu.rs"]
@@ -1231,10 +1231,6 @@ ignored = 0
 [snes."tests/interrupts.rs"]
 passed = 19
 ignored = 0
-
-[snes."tests/job018_halt.rs"]
-passed = 0
-ignored = 3
 
 [snes."tests/joypad.rs"]
 passed = 8

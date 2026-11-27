@@ -110,6 +110,80 @@ pub fn read(path: &Path) -> Vec<u8> {
     std::fs::read(path).unwrap_or_else(|why| panic!("cannot read {}: {why}", path.display()))
 }
 
+/// Where the synthetic SPC700 image starts in APU RAM (issue #6's sound pin).
+pub const SPC_PROGRAM: u16 = 0x0200;
+/// Where the synthetic image's sample directory page sits; `DIR` is a page number, so this is
+/// `$0300` and the program's 158 bytes at `$0200` never touch it.
+pub const SPC_DIR: u16 = 0x0300;
+/// Where the synthetic image's one BRR block sits; instrument 0 starts and loops here.
+pub const SPC_BRR: u16 = 0x0310;
+
+/// The synthetic SPC700 program and its data, as one image loaded at [`SPC_PROGRAM`].
+///
+/// No ROM and no cartridge are involved: the program is 26 DSP register writes — `MOV $F2,#reg`
+/// then `MOV $F3,#value` (`8F imm dp` on the SPC700) — that give one voice a looping BRR square
+/// wave, arm echo with a non-zero FIR, and key the voice on, followed by `BRA *` (`2F FE`):
+///
+/// - voice 0: SRCN 0, pitch `$1000` (one BRR sample per output sample), direct GAIN `$7F`;
+/// - echo: `ESA` `$3000`, `EDL` 1 (512 entries, 16 ms), one voice in (`EON`), `EFB` `$20`,
+///   `EVOL` `$30`, FIR taps `$40 $20 $10 $08` then zeros;
+/// - `FLG` `$00`: not reset, not muted, echo writes on.
+///
+/// The image is the same on every host, so both sound pins measure the same program. The two
+/// test files (`crates/tendy-snes/tests/synthetic.rs`, `crates/tendy-gb/tests/synthetic.rs`)
+/// carry a copy: the pins catch a drift between them immediately.
+pub fn spc_image() -> Vec<u8> {
+    const WRITES: [(u8, u8); 26] = [
+        (0x5D, 0x03), // DIR: directory page $0300
+        (0x0C, 0x50), // MVOLL
+        (0x1C, 0x50), // MVOLR
+        (0x00, 0x50), // V0VOLL
+        (0x01, 0x50), // V0VOLR
+        (0x02, 0x00), // V0PITCHL
+        (0x03, 0x10), // V0PITCHH: $1000, 32 000 Hz
+        (0x04, 0x00), // V0SRCN: instrument 0
+        (0x05, 0x00), // V0ADSR1: 0 selects GAIN mode
+        (0x07, 0x7F), // V0GAIN: direct, maximum
+        (0x0F, 0x40), // FIR tap 0 = 64
+        (0x1F, 0x20), // FIR tap 1 = 32
+        (0x2F, 0x10), // FIR tap 2 = 16
+        (0x3F, 0x08), // FIR tap 3 = 8
+        (0x4F, 0x00), // FIR tap 4
+        (0x5F, 0x00), // FIR tap 5
+        (0x6F, 0x00), // FIR tap 6
+        (0x7F, 0x00), // FIR tap 7
+        (0x2C, 0x30), // EVOLL
+        (0x3C, 0x30), // EVOLR
+        (0x0D, 0x20), // EFB
+        (0x6D, 0x30), // ESA: echo buffer at $3000
+        (0x7D, 0x01), // EDL: 512 entries (16 ms)
+        (0x4D, 0x01), // EON: voice 0 feeds the echo
+        (0x6C, 0x00), // FLG: reset, mute and echo-write-disable all clear
+        (0x4C, 0x01), // KON: voice 0 on
+    ];
+    let len = usize::from(SPC_BRR + 9 - SPC_PROGRAM);
+    let mut image = vec![0u8; len];
+    let mut at = 0;
+    for (reg, value) in WRITES {
+        image[at..at + 3].copy_from_slice(&[0x8F, reg, 0xF2]);
+        image[at + 3..at + 6].copy_from_slice(&[0x8F, value, 0xF3]);
+        at += 6;
+    }
+    image[at..at + 2].copy_from_slice(&[0x2F, 0xFE]);
+    let dir = usize::from(SPC_DIR - SPC_PROGRAM);
+    image[dir..dir + 4].copy_from_slice(&[
+        SPC_BRR as u8,
+        (SPC_BRR >> 8) as u8,
+        SPC_BRR as u8,
+        (SPC_BRR >> 8) as u8,
+    ]);
+    let brr = usize::from(SPC_BRR - SPC_PROGRAM);
+    // Shift 12, filter 0, end+loop (code 3), then a square of +7 and -7 nibbles.
+    image[brr] = (12 << 4) | 3;
+    image[brr + 1..brr + 9].copy_from_slice(&[0x77, 0x77, 0x99, 0x99, 0x77, 0x77, 0x99, 0x99]);
+    image
+}
+
 /// The audio pin: FNV-1a 64 over drained samples as little-endian `f32`, in order.
 pub struct AudioHash {
     hash: u64,

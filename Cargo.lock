@@ -1018,8 +1018,8 @@ dependencies = [
 name = "tendy-gb"
 version = "0.1.0"
 dependencies = [
- "libm",
  "tendy-core",
+ "tendy-spc",
 ]
 
 [[package]]
@@ -1045,11 +1045,16 @@ name = "tendy-snes"
 version = "0.1.0"
 dependencies = [
  "tendy-core",
+ "tendy-spc",
 ]
 
 [[package]]
 name = "tendy-spc"
 version = "0.1.0"
+dependencies = [
+ "tendy-gb",
+ "tendy-snes",
+]
 
 [[package]]
 name = "tendyemu"

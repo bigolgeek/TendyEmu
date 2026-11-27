@@ -1,6 +1,6 @@
 //! Game Boy, Game Boy Color and Super Game Boy pins (DESIGN §5.6).
 //!
-//! Two acid2 pictures, Blargg's `cpu_instrs`, the SGB border composition, and (when the owner
+//! Two acid2 pictures, Blargg's `cpu_instrs`, the SGB border composition, and (when the user
 //! has supplied the cartridge image) SGB sound.
 
 mod common;

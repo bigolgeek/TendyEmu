@@ -5,7 +5,7 @@
 # and its sha256 and byte count are pinned below.
 #
 # Format: name|url|sha256|bytes|licence
-# A row whose sha256 is `-` is local-only: the owner supplies that file and the fetch script
+# A row whose sha256 is `-` is local-only: the user supplies that file and the fetch script
 # skips it. The probes treat a missing local-only file as a skipped run, not a failure.
 #
 # Layout the probes expect under TENDY_TEST_ROMS:
@@ -22,6 +22,6 @@ cgb-acid2.gbc|https://github.com/mattcurrie/cgb-acid2/releases/download/v1.1/cgb
 cpu_instrs.gb|https://raw.githubusercontent.com/retrio/gb-test-roms/master/cpu_instrs/cpu_instrs.gb|8c5e12f41e0ba5bbca796944f92ffe6de28809198682c4332e38d1b3cf56fcf2|65536|Blargg; no formal licence, distributed for emulator testing and mirrored at github.com/retrio/gb-test-roms
 apu_test/rom_singles/1-len_ctr.nes|https://raw.githubusercontent.com/christopherpow/nes-test-roms/95d8f621ae55cee0d09b91519a8989ae0e64753b/apu_test/rom_singles/1-len_ctr.nes|aacf86c1d773badd11392e54506a43a06a3dd0b67a4c255909d1daf770a4a1e2|40976|Blargg; no formal licence, distributed for emulator testing and mirrored at github.com/christopherpow/nes-test-roms
 snes-test-roms.zip|https://github.com/undisbeliever/snes-test-roms/releases/download/v20210217/snes-test-roms-20210217.zip|00945927bee494317663accaeb21d854b6cdfef674813e6c119877a8eeacb1c4|45715|MIT, Copyright (c) 2021 undisbeliever (github.com/undisbeliever/snes-test-roms)
-sgb-cartridge.bin|-|-|-|owner-supplied Super Game Boy cartridge image, never committed
-fds-bios.rom|-|-|-|owner-supplied Famicom Disk System BIOS, never committed
-fds-game.fds|-|-|-|owner-supplied FDS disk image, never committed
+sgb-cartridge.bin|-|-|-|user-supplied Super Game Boy cartridge image, never committed
+fds-bios.rom|-|-|-|user-supplied Famicom Disk System BIOS, never committed
+fds-game.fds|-|-|-|user-supplied FDS disk image, never committed

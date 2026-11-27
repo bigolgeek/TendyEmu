@@ -44,7 +44,7 @@ while IFS='|' read -r name url sha bytes licence; do
     part="$target.part"
 
     if [ "$sha" = "-" ]; then
-        printf 'LOCAL   %s: owner-supplied, not fetched (%s)\n' "$name" "${licence%%,*}"
+        printf 'LOCAL   %s: user-supplied, not fetched (%s)\n' "$name" "${licence%%,*}"
         local_only=$((local_only + 1))
         continue
     fi

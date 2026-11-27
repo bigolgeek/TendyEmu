@@ -3,3 +3,10 @@ name = "tendy-spc"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+
+# No dependencies: the chip knows nothing about a SNES or a Game Boy, only about a `Host`
+# (DESIGN §1.2). The two cores below are dev-only, so that `tests/layout.rs` can drive the shared
+# writer through each host's own `StateWriter` and prove both layouts survive the move.
+[dev-dependencies]
+tendy-gb = { path = "../tendy-gb" }
+tendy-snes = { path = "../tendy-snes" }

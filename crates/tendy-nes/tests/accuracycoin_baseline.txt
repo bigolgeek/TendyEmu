@@ -1,0 +1,148 @@
+# AccuracyCoin tests that must keep passing: result address and name.
+0405 ROM is not writable
+0403 RAM Mirroring
+044D PC Wraparound
+0474 The Decimal Flag
+0475 The B Flag
+0406 Dummy read cycles
+0407 Dummy write cycles
+0408 Open Bus
+047D All NOP instructions
+046E Absolute Indexed
+046F Zero Page Indexed
+0470 Indirect
+0471 Indirect, X
+0472 Indirect, Y
+0473 Relative
+0409 $03 SLO (Indirect)
+040A $07 SLO Zero Page
+040B $0F SLO Absolute
+040C $13 SLO (Indirect)
+040D $17 SLO Zero Page
+040E $1B SLO Absolute
+040F $1F SLO Absolute
+0419 $23 RLA (Indirect)
+041A $27 RLA Zero Page
+041B $2F RLA Absolute
+041C $33 RLA (Indirect)
+041D $37 RLA Zero Page
+041E $3B RLA Absolute
+041F $3F RLA Absolute
+0420 $43 SRE (Indirect)
+047F $47 SRE Zero Page
+0422 $4F SRE Absolute
+0423 $53 SRE (Indirect)
+0424 $57 SRE Zero Page
+0425 $5B SRE Absolute
+0426 $5F SRE Absolute
+0427 $63 RRA (Indirect)
+0428 $67 RRA Zero Page
+0429 $6F RRA Absolute
+042A $73 RRA (Indirect)
+042B $77 RRA Zero Page
+042C $7B RRA Absolute
+042D $7F RRA Absolute
+042E $83 SAX (Indirect)
+042F $87 SAX Zero Page
+0430 $8F SAX Absolute
+0431 $97 SAX Zero Page
+0432 $A3 LAX (Indirect)
+0433 $A7 LAX Zero Page
+0434 $AF LAX Absolute
+0435 $B3 LAX (Indirect)
+0436 $B7 LAX Zero Page
+0437 $BF LAX Absolute
+0438 $C3 DCP (Indirect)
+0439 $C7 DCP Zero Page
+043A $CF DCP Absolute
+043B $D3 DCP (Indirect)
+043C $D7 DCP Zero Page
+043D $DB DCP Absolute
+043E $DF DCP Absolute
+043F $E3 ISC (Indirect)
+0440 $E7 ISC Zero Page
+0441 $EF ISC Absolute
+0442 $F3 ISC (Indirect)
+0443 $F7 ISC Zero Page
+0444 $FB ISC Absolute
+0445 $FF ISC Absolute
+0446 $93 SHA (Indirect)
+0447 $9F SHA Absolute
+0448 $9B SHS Absolute
+0449 $9C SHY Absolute
+044A $9E SHX Absolute
+044B $BB LAE Absolute
+0410 $0B ANC
+0411 $2B ANC
+0412 $4B ASR
+0413 $6B ARR
+0414 $8B ANE
+0415 $AB LXA
+0416 $CB AXS
+0417 $EB SBC
+0461 Interrupt flag latency
+0462 NMI Overlap BRK
+0463 NMI Overlap IRQ
+046C DMA + Open Bus
+0488 DMA + $2002 Read
+044C DMA + $2007 Read
+044F DMA + $2007 Write
+045D DMA + $4015 Read
+045E DMA + $4016 Read
+046B DMC DMA Bus Conflicts
+0477 DMC DMA + OAM DMA
+0479 Explicit DMA Abort
+0478 Implicit DMA Abort
+0465 Length Counter
+0466 Length Table
+0467 Frame Counter IRQ
+0468 Frame Counter 4-step
+0469 Frame Counter 5-step
+046A Delta Modulation Channel
+045C APU Register Activation
+045F Controller Strobing
+047A Controller Clocking
+0460 Instruction Timing
+046D Implied Dummy Reads
+048B Branch Dummy Reads
+047C JSR Edge Cases
+0490 Internal Data Bus
+0496 DMA Landing on Write
+0497 DMC Reload Timing
+0498 DMC Playback Rate
+0485 CHR ROM is not writable
+0404 PPU Register Mirroring
+044E PPU Register Open Bus
+0476 PPU Read Buffer
+047E Palette RAM Quirks
+0450 VBlank beginning
+0451 VBlank end
+0452 NMI Control
+0453 NMI Timing
+0454 NMI Suppression
+0455 NMI at VBlank end
+0456 NMI disabled at VBlank
+0459 Sprite overflow behavior
+0457 Sprite 0 Hit behavior
+048D $2002 flag timing
+0489 Suddenly Resize Sprite
+0494 Misaligned OAM DMA
+0458 Arbitrary Sprite zero
+045A Misaligned OAM behavior
+047B OAM Corruption
+0482 t Register Quirks
+045B Address $2004 behavior
+0480 INC $4014
+0486 Rendering Flag Behavior
+048A $2007 read w/ rendering
+048C $2004 Stress Test
+048E $2007 Stress Test
+0481 Attributes As Tiles
+0483 Stale BG Shift Registers
+0487 BG Serial In
+0491 ALE + Read
+0492 Hybrid Addresses
+0484 Sprites On Scanline 0
+048F Stale Sprite Shift Regs
+0493 Frozen OAM2 Increment
+0495 Misaligned OAM2 Address

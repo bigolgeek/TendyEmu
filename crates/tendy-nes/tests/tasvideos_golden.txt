@@ -1,0 +1,10 @@
+# Golden digests for rows that cannot be judged from RAM or the screen (`golden:<frames>[:audio]`).
+# A digest proves the run is unchanged since a human signed it off; it does not prove it is correct,
+# so these rows never count in the `N / 156 pass` total (Q124-1) - they are a bucket of their own.
+# <row name>	<frames>	<rolling digest of every framebuffer, plus the drained APU sample bits with :audio>
+# Audio digests (rows with `:audio`) are tied to the resampler and filter chain (#73): any filter or
+# resampler change moves them, so regenerate them knowingly after such a change.
+# Regenerate with TASVIDEOS_WRITE_GOLDEN=1 after looking at the frames from TASVIDEOS_EXPORT_DIR.
+dmc_tests/buffer_retained	600	ab74453bf5044ff4
+dmc_tests/latency	600	bbdab5fdde1f1609
+dmc_tests/status_irq	600	86629549ef88822b

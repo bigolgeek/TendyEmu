@@ -9,3 +9,7 @@ tendy-core.workspace = true
 libm.workspace = true
 png.workspace = true
 zip.workspace = true
+
+[features]
+# DESIGN §1.3: the source's optional PPU phase profiler, moved with the crate.
+ppu-profile = []

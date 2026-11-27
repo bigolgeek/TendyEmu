@@ -1,4 +1,4 @@
-//! NES pins (DESIGN §5.6): an iNES cartridge, an NSF built in code, and (when the owner has
+//! NES pins (DESIGN §5.6): an iNES cartridge, an NSF built in code, and (when the user has
 //! supplied the BIOS and a disk image) an FDS disk.
 
 mod common;
@@ -105,7 +105,7 @@ fn fds(root: &std::path::Path, report: &mut Report) {
     };
     report.run("nes/fds");
     let mut nes = Nes::from_fds(&read(&disk), &read(&bios), false)
-        .expect("the owner's FDS BIOS and disk load");
+        .expect("the user's FDS BIOS and disk load");
     nes.bus.apu.set_sample_rate(SAMPLE_RATE);
     advance(&mut nes, 600, None);
     report.pin("frame@600", hex(frame_hash(&nes)));

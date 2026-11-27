@@ -1,0 +1,149 @@
+# AccuracyCoin scored tests: menu page, result byte address (hex), name. Generated from AccuracyCoin.asm
+# (commit b4b5952f), suite table "TestPages:". Page 16 only draws power-on state and is not scored.
+1 0405 ROM is not writable
+1 0403 RAM Mirroring
+1 044D PC Wraparound
+1 0474 The Decimal Flag
+1 0475 The B Flag
+1 0406 Dummy read cycles
+1 0407 Dummy write cycles
+1 0408 Open Bus
+1 047D All NOP instructions
+2 046E Absolute Indexed
+2 046F Zero Page Indexed
+2 0470 Indirect
+2 0471 Indirect, X
+2 0472 Indirect, Y
+2 0473 Relative
+3 0409 $03 SLO (Indirect)
+3 040A $07 SLO Zero Page
+3 040B $0F SLO Absolute
+3 040C $13 SLO (Indirect)
+3 040D $17 SLO Zero Page
+3 040E $1B SLO Absolute
+3 040F $1F SLO Absolute
+4 0419 $23 RLA (Indirect)
+4 041A $27 RLA Zero Page
+4 041B $2F RLA Absolute
+4 041C $33 RLA (Indirect)
+4 041D $37 RLA Zero Page
+4 041E $3B RLA Absolute
+4 041F $3F RLA Absolute
+5 0420 $43 SRE (Indirect)
+5 047F $47 SRE Zero Page
+5 0422 $4F SRE Absolute
+5 0423 $53 SRE (Indirect)
+5 0424 $57 SRE Zero Page
+5 0425 $5B SRE Absolute
+5 0426 $5F SRE Absolute
+6 0427 $63 RRA (Indirect)
+6 0428 $67 RRA Zero Page
+6 0429 $6F RRA Absolute
+6 042A $73 RRA (Indirect)
+6 042B $77 RRA Zero Page
+6 042C $7B RRA Absolute
+6 042D $7F RRA Absolute
+7 042E $83 SAX (Indirect)
+7 042F $87 SAX Zero Page
+7 0430 $8F SAX Absolute
+7 0431 $97 SAX Zero Page
+7 0432 $A3 LAX (Indirect)
+7 0433 $A7 LAX Zero Page
+7 0434 $AF LAX Absolute
+7 0435 $B3 LAX (Indirect)
+7 0436 $B7 LAX Zero Page
+7 0437 $BF LAX Absolute
+8 0438 $C3 DCP (Indirect)
+8 0439 $C7 DCP Zero Page
+8 043A $CF DCP Absolute
+8 043B $D3 DCP (Indirect)
+8 043C $D7 DCP Zero Page
+8 043D $DB DCP Absolute
+8 043E $DF DCP Absolute
+9 043F $E3 ISC (Indirect)
+9 0440 $E7 ISC Zero Page
+9 0441 $EF ISC Absolute
+9 0442 $F3 ISC (Indirect)
+9 0443 $F7 ISC Zero Page
+9 0444 $FB ISC Absolute
+9 0445 $FF ISC Absolute
+10 0446 $93 SHA (Indirect)
+10 0447 $9F SHA Absolute
+10 0448 $9B SHS Absolute
+10 0449 $9C SHY Absolute
+10 044A $9E SHX Absolute
+10 044B $BB LAE Absolute
+11 0410 $0B ANC
+11 0411 $2B ANC
+11 0412 $4B ASR
+11 0413 $6B ARR
+11 0414 $8B ANE
+11 0415 $AB LXA
+11 0416 $CB AXS
+11 0417 $EB SBC
+12 0461 Interrupt flag latency
+12 0462 NMI Overlap BRK
+12 0463 NMI Overlap IRQ
+13 046C DMA + Open Bus
+13 0488 DMA + $2002 Read
+13 044C DMA + $2007 Read
+13 044F DMA + $2007 Write
+13 045D DMA + $4015 Read
+13 045E DMA + $4016 Read
+13 046B DMC DMA Bus Conflicts
+13 0477 DMC DMA + OAM DMA
+13 0479 Explicit DMA Abort
+13 0478 Implicit DMA Abort
+14 0465 Length Counter
+14 0466 Length Table
+14 0467 Frame Counter IRQ
+14 0468 Frame Counter 4-step
+14 0469 Frame Counter 5-step
+14 046A Delta Modulation Channel
+14 045C APU Register Activation
+14 045F Controller Strobing
+14 047A Controller Clocking
+15 0460 Instruction Timing
+15 046D Implied Dummy Reads
+15 048B Branch Dummy Reads
+15 047C JSR Edge Cases
+15 0490 Internal Data Bus
+15 0496 DMA Landing on Write
+15 0497 DMC Reload Timing
+15 0498 DMC Playback Rate
+17 0485 CHR ROM is not writable
+17 0404 PPU Register Mirroring
+17 044E PPU Register Open Bus
+17 0476 PPU Read Buffer
+17 047E Palette RAM Quirks
+18 0450 VBlank beginning
+18 0451 VBlank end
+18 0452 NMI Control
+18 0453 NMI Timing
+18 0454 NMI Suppression
+18 0455 NMI at VBlank end
+18 0456 NMI disabled at VBlank
+19 0459 Sprite overflow behavior
+19 0457 Sprite 0 Hit behavior
+19 048D $2002 flag timing
+19 0489 Suddenly Resize Sprite
+19 0494 Misaligned OAM DMA
+19 0458 Arbitrary Sprite zero
+19 045A Misaligned OAM behavior
+19 047B OAM Corruption
+20 0482 t Register Quirks
+20 045B Address $2004 behavior
+20 0480 INC $4014
+20 0486 Rendering Flag Behavior
+20 048A $2007 read w/ rendering
+20 048C $2004 Stress Test
+20 048E $2007 Stress Test
+21 0481 Attributes As Tiles
+21 0483 Stale BG Shift Registers
+21 0487 BG Serial In
+21 0491 ALE + Read
+21 0492 Hybrid Addresses
+22 0484 Sprites On Scanline 0
+22 048F Stale Sprite Shift Regs
+22 0493 Frozen OAM2 Increment
+22 0495 Misaligned OAM2 Address

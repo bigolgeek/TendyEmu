@@ -1,0 +1,8 @@
+version	major=2,minor=0
+info	csym=0,file=1,lib=0,line=3,mod=1,scope=2,seg=2,span=4,sym=4,type=0
+seg	id=1,name="CODE",start=0x8000,size=0x0040,addrsize=abs,type=ro
+seg	id=2,name="ZEROPAGE",start=0x0000,size=0x0010,addrsize=zeropage,type=rw
+sym	id=1,name="main",addrsize=abs,size=16,scope=1,val=0x8000,seg=1,type=lab
+sym	id=2,name="irq_handler",addrsize=abs,size=4,scope=1,val=0x8020,seg=1,type=lab
+sym	id=3,name="screen_x",addrsize=zeropage,size=1,scope=1,val=0x0010,seg=2,type=lab
+sym	id=4,name="extern_font",addrsize=abs,scope=1,type=imp,exp=9

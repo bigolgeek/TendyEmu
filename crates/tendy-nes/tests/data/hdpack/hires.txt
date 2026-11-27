@@ -1,0 +1,7 @@
+<ver>105
+<scale>2
+<img>bg.png
+<img>spr.png
+<overscan>0,0,0,0
+<tile>0,12,0F162730,0,0,1,N
+<tile>1,2E,FF16360F,0,0,1,N

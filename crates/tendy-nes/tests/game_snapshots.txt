@@ -1,0 +1,73 @@
+# Checkpoint table for tests/game_snapshots.rs -- one real commercial game per line.
+# <rom file> TAB <frames>
+#
+# Frames come from running each ROM headless and stopping at the first frame whose picture had
+# been unchanged for 45 frames AND showed more than one colour (cap 2400, then clamped to 1200
+# for the games that never stop animating). Emulation is deterministic, so any fixed frame count
+# works as a checkpoint; this rule just keeps every hash on a drawn screen instead of on the
+# black frame most games show before their title fades in.
+#
+# Deliberately not listed:
+#   mapper 5  (MMC5) is implemented (src/mapper/mmc5.rs); no MMC5 game is in the baseline yet:
+#             Castlevania 3 - Dracula's Curse, Bandit Kings of Ancient China, Uncharted Waters,
+#             Gemfire, L'Empereur
+#   mapper 69 (FME-7), not implemented: Batman - Return of the Joker
+#
+# The ROMs are copyrighted and are not in the repository. A case whose file is missing is
+# reported as skipped, not failed; check the skipped count before trusting a pass.
+Adventures of Lolo 2 (U).nes	104
+Air Fortress (U).nes	1200
+Arkanoid (U).nes	61
+Astyanax (U).nes	176
+Balloon Fight (JU).nes	1200
+Battletoads (U).nes	77
+Battletoads Double Dragon (U).nes	726
+Bee 52 (U).nes	99
+Bill & Ted's Excellent Video Game Adventure (U).nes	69
+Blaster Master (U).nes	189
+Burai Fighter (U).nes	662
+Castlevania (U) (PRG 1).nes	1200
+Cobra Triangle (U).nes	1200
+Contra (U).nes	1200
+Crystalis (U).nes	155
+Cybernoid - The Fighting Machine (U).nes	76
+Day Dreamin' Davey (U).nes	89
+Donkey Kong (JU).nes	50
+Duck Hunt (JUE).nes	56
+Excitebike (JU).nes	54
+Fire Hawk (U).nes	111
+Galaga (U).nes	1200
+Ironsword - Wizards & Warriors 2 (U).nes	50
+Kid Icarus (UE).nes	56
+Kirby's Adventure (U) (PRG 1) [!].nes	191
+Legend of Zelda, The (U) (PRG 1).nes	1200
+Low G Man (U).nes	89
+Marble Madness (U).nes	1200
+Mario Bros (JU).nes	53
+Mega Man 2 (U).nes	94
+Mega Man 3 (U) [!].nes	84
+Metroid (U).nes	1200
+Micro Machines (U).nes	86
+Ms Pac-Man (U).nes	1200
+Ninja Gaiden (U).nes	107
+Pac-Man (Tengen) (U) [!].nes	290
+Punch-Out!! (U).nes	253
+Puzznic (U).nes	60
+Rollerblade Racer (U).nes	52
+Skate or Die 2 - The Search for Double Trouble (U).nes	58
+Slalom (U).nes	116
+Solar Jetman - Hunt for the Golden Warpship (U).nes	53
+Space Shuttle Project (U).nes	225
+Spelunker (U) [!].nes	254
+Star Trek - 25th Anniversary (U).nes	1200
+Startropics (U).nes	63
+Stunt Kids (U).nes	119
+Super Mario Bros (JU) (PRG 1).nes	1200
+Super Mario Bros 3 (U) (PRG 1).nes	58
+Teenage Mutant Ninja Turtles (U).nes	53
+Time Lord (U).nes	96
+Ultimate Stuntman (U).nes	123
+Wario's Woods (U).nes	1200
+Wizards & Warriors 3 (U).nes	771
+Young Indiana Jones Chronicles, The (U).nes	93
+Zelda 2 - The Adventure of Link (U).nes	1200

@@ -1734,7 +1734,7 @@ decisions that changed what this document or the spec says.
 | Two checkouts sharing one `CARGO_TARGET_DIR` | cargo can run the other checkout's stale build, and tests pass on old code | Each worktree or clone uses its own target folder (#5 clones included) |
 | `Cargo.lock` conflicts between lanes | merge friction | Regenerate; never merge by hand (§7.1) |
 | Test ROM licences: nes's fetch script states its ROMs have unclear licences | they cannot be committed | Fetched or local only; never committed (§10) |
-| SNES save states are a scaffold at `bf3c60b` (`src/machine.rs:142` saves a version and three counters, 38 bytes, no device state) | saving a SNES state appears to work and restores nothing; loading rewinds only the frame counter | Decision in #69: gate the save/load/rewind rows on a capability SNES does not report until device serialisation exists. GB, GBA and NES states are real (137 KB, 550 KB, full RAM) |
+| SNES save states are a scaffold at `bf3c60b` (`src/machine.rs:142` saves a version and three counters, 38 bytes, no device state) | saving a SNES state appears to work and restores nothing; loading rewinds only the frame counter | Decided in #69: make them real for 0.1.0 — #71 (M5) serialises every device, with a save → run → load → run round-trip proof. GB, GBA and NES states are real (137 KB, 550 KB, full RAM) |
 | Edition 2024 | needs Rust 1.85 or newer | State it in the README (#31) |
 
 ### 9.3 UNVERIFIED items (each with the check that settles it)
