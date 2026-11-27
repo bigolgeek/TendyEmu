@@ -11,11 +11,10 @@
 //! pixels so the bars are whatever the remainder is. The `4:3` aspect is the NES front end's
 //! rule — the console was made for a television, and the NES offered the choice.
 
-use std::sync::Mutex;
-
 use tendy_core::SystemKind;
 
 use crate::app::App;
+use crate::config;
 use crate::menu::{Row, RowAct, RowKind};
 use crate::settings::Direction;
 use crate::status_bar::BAR_H;
@@ -149,24 +148,30 @@ impl Default for DisplayOptions {
     }
 }
 
-/// The picture options this session runs under.
-///
-/// `App` has no field for them and they are not in `config.toml` until #21 reads it, so the module
-/// keeps the one value the process has: the drawer writes it through [`on_row`], and `main.rs`
-/// reads it each frame. #21 replaces the write with a settings save.
-static OPTIONS: Mutex<DisplayOptions> = Mutex::new(DisplayOptions::DEFAULT);
-
-/// The options in force.
-pub fn options() -> DisplayOptions {
-    *OPTIONS
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-fn set_options(next: DisplayOptions) {
-    *OPTIONS
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = next.clamped();
+/// The window and picture rules in force, read from the settings file (§6.2): the running
+/// system's section, then `[app]`, then each key's default. With no game the Game Boy section
+/// answers, as it does for the settings rows.
+pub fn options(app: &App) -> DisplayOptions {
+    let system = app.system().unwrap_or(SystemKind::Gb);
+    let value = |key: &str| app.setting(system, key);
+    let on = |key: &str, default: bool| match value(key).as_deref() {
+        Some("true") => true,
+        Some("false") => false,
+        _ => default,
+    };
+    DisplayOptions {
+        scale: value("scale")
+            .and_then(|word| word.parse().ok())
+            .unwrap_or(DEFAULT_SCALE),
+        fullscreen: on("fullscreen", false),
+        integer_scale: on("integer_scale", true),
+        aspect: match value("aspect").as_deref() {
+            Some("4:3") => Aspect::Four3,
+            _ => Aspect::Square,
+        },
+        bar: on("status_bar", true),
+    }
+    .clamped()
 }
 
 /// The DPI factor to divide and multiply by, with the values that cannot mean a display (`0`, a
@@ -347,15 +352,13 @@ pub enum DisplayRow {
 /// The rows this picture gets, in drawer order.
 ///
 /// The NES keeps its 4:3 aspect row; the handhelds' pixels are square, so the row would offer a
-/// shape their screens never had. The status-bar row is a §6.2 `[app]` key and needs `main.rs` to
-/// stop painting the bar when it is off, which is outside this issue's window-sizing allowance;
-/// it is a report item, not a row that would lie about the window.
+/// shape their screens never had. The GBA's section has no `integer_scale` key (#21), so it gets
+/// no row to write; its picture is always drawn in whole multiples.
 pub fn row_list(system: Option<SystemKind>) -> Vec<DisplayRow> {
-    let mut rows = vec![
-        DisplayRow::Scale,
-        DisplayRow::Fullscreen,
-        DisplayRow::IntegerScale,
-    ];
+    let mut rows = vec![DisplayRow::Scale, DisplayRow::Fullscreen];
+    if system != Some(SystemKind::Gba) {
+        rows.push(DisplayRow::IntegerScale);
+    }
     if system == Some(SystemKind::Nes) {
         rows.push(DisplayRow::Aspect);
     }
@@ -364,7 +367,7 @@ pub fn row_list(system: Option<SystemKind>) -> Vec<DisplayRow> {
 
 /// The DISPLAY group of the drawer.
 pub fn rows(app: &App) -> Vec<Row> {
-    let options = options();
+    let options = options(app);
     row_list(app.system())
         .into_iter()
         .map(|row| {
@@ -445,32 +448,40 @@ pub fn stepped(options: DisplayOptions, row: DisplayRow, act: &RowAct) -> Option
     (next != options).then_some(next)
 }
 
-/// A DISPLAY row's action.
+/// A DISPLAY row's action: writes the value to the section that owns the key.
 pub fn on_row(app: &mut App, index: usize, act: RowAct) -> bool {
     let Some(row) = row_list(app.system()).get(index).copied() else {
         return false;
     };
-    let Some(next) = stepped(options(), row, &act) else {
+    let Some(next) = stepped(options(app), row, &act) else {
         return false;
     };
-    set_options(next);
-    true
-}
-
-/// Nothing to do per frame: `main.rs` follows the picture with [`Follower`] and reads [`options`].
-///
-/// One exception: the 4:3 option is the NES's row, and a system without that row runs square
-/// pixels. A session that turned 4:3 on for a NES cart therefore does not hand the shape — and
-/// its fractional pixel widths — to the next system's game.
-pub fn on_frame(app: &mut App) {
-    let options = options();
-    if options.aspect != Aspect::Square && app.system() != Some(SystemKind::Nes) {
-        set_options(DisplayOptions {
-            aspect: Aspect::Square,
-            ..options
-        });
+    let system = app.system().unwrap_or(SystemKind::Gb);
+    let (section, key, value) = match row {
+        DisplayRow::Scale => (config::APP, "scale", next.scale.to_string()),
+        DisplayRow::Fullscreen => (config::APP, "fullscreen", next.fullscreen.to_string()),
+        DisplayRow::IntegerScale => (system.key(), "integer_scale", next.integer_scale.to_string()),
+        DisplayRow::Aspect => (
+            SystemKind::Nes.key(),
+            "aspect",
+            match next.aspect {
+                Aspect::Square => "square",
+                Aspect::Four3 => "4:3",
+            }
+            .to_string(),
+        ),
+    };
+    match config::write_value(app.paths(), section, key, &value) {
+        Ok(()) => true,
+        Err(why) => {
+            app.show_notice(format!("display setting not written: {why}"), true);
+            false
+        }
     }
 }
+
+/// Nothing to do per frame: the options are read from the settings file where they are used.
+pub fn on_frame(_app: &mut App) {}
 
 #[cfg(test)]
 mod tests {
@@ -630,6 +641,11 @@ mod tests {
                 DisplayRow::IntegerScale,
                 DisplayRow::Aspect
             ]
+        );
+        assert_eq!(
+            row_list(Some(SystemKind::Gba)),
+            vec![DisplayRow::Scale, DisplayRow::Fullscreen],
+            "the GBA section has no integer-scale key to write"
         );
     }
 

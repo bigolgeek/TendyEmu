@@ -39,7 +39,7 @@ async fn main() {
     let mut texture: Option<Texture2D> = None;
     let mut picture_size = (0u16, 0u16);
     let mut follower = Follower::new();
-    let mut fullscreen = display::options().fullscreen;
+    let mut fullscreen = display::options(&app).fullscreen;
 
     loop {
         if is_quit_requested() || app.quit_requested() {
@@ -57,7 +57,7 @@ async fn main() {
 
         let win_w = screen_width();
         let win_h = screen_height();
-        let options = display::options();
+        let options = display::options(&app);
         if options.fullscreen != fullscreen {
             set_fullscreen(options.fullscreen);
             fullscreen = options.fullscreen;
@@ -104,7 +104,9 @@ async fn main() {
             }
         }
 
-        draw::paint_bar(&app.bar(), win_w, win_h);
+        if options.bar {
+            draw::paint_bar(&app.bar(), win_w, win_h);
+        }
 
         if app.menu().is_open() {
             let dw = menu::drawer_width(win_w);
