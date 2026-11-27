@@ -226,9 +226,9 @@ pub fn rows(app: &App) -> Vec<Row> {
     for key in keys(system) {
         let stored = overrides.get(system.key(), key);
         let label = match *key {
-            "scale" => "Scale",
-            "fullscreen" => "Fullscreen",
-            _ => "Integer scale",
+            "scale" => "Scale (this game)",
+            "fullscreen" => "Fullscreen (this game)",
+            _ => "Integer scale (this game)",
         };
         let (kind, value) = match *key {
             "scale" => (RowKind::Choice, stored.map(str::to_string)),
@@ -238,7 +238,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             label: label.to_string(),
             value: value.unwrap_or_else(|| "(inherit)".to_string()),
             kind,
-            desc: "Wins over the system's setting",
+            desc: "An override of the Display page's value; (inherit) follows it",
             hotkey: "",
             requires: None,
             act: None,

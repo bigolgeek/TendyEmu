@@ -10,6 +10,7 @@ use tendy_core::SystemKind;
 use tendyemu::app::App;
 use tendyemu::config;
 use tendyemu::games;
+use tendyemu::menu;
 use tendyemu::paths::{self, Paths};
 
 /// A scratch config folder, removed when the test ends.
@@ -201,4 +202,51 @@ fn the_app_reads_the_settings_file() {
         "the system section's own value"
     );
     assert_eq!(app.setting(SystemKind::Gb, "no_such_key"), None);
+}
+
+#[test]
+fn every_page_has_one_owner_for_each_picture_row() {
+    let scratch = Scratch::new("one-owner");
+    let rom = scratch.rom("game.gb", &gb_rom());
+    let mut app = App::new(scratch.paths());
+    app.open(&rom).expect("the built cartridge opens");
+
+    let rows = menu::Rows::collect(&app);
+    for group in rows.groups() {
+        let mut labels: Vec<&str> = group.rows.iter().map(|row| row.label.as_str()).collect();
+        labels.sort_unstable();
+        for pair in labels.windows(2) {
+            assert_ne!(
+                pair[0], pair[1],
+                "two rows named {:?} on {:?}",
+                pair[0], group.level
+            );
+        }
+    }
+
+    // One owner per picture row: the Display page's three, plus the this-game overrides worded
+    // so they cannot be mistaken for them.
+    let labels: Vec<&str> = rows
+        .groups()
+        .iter()
+        .flat_map(|group| group.rows.iter().map(|row| row.label.as_str()))
+        .collect();
+    for label in ["Scale", "Fullscreen", "Integer scale"] {
+        assert_eq!(
+            labels.iter().filter(|row| **row == label).count(),
+            1,
+            "{label} has one owner"
+        );
+    }
+    for label in [
+        "Scale (this game)",
+        "Fullscreen (this game)",
+        "Integer scale (this game)",
+    ] {
+        assert_eq!(
+            labels.iter().filter(|row| **row == label).count(),
+            1,
+            "{label} is labelled as the game's own"
+        );
+    }
 }
