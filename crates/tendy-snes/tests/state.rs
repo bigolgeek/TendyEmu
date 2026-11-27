@@ -65,15 +65,16 @@ fn corrupt_state_leaves_machine_untouched() {
         "the state is magic, version, a payload and an 8-byte trailer"
     );
 
-    // A short state is truncated rather than half-loaded: at 10 bytes the fields run out, and so
-    // does a state missing its last byte, which eats into the trailer.
+    // A short state is truncated rather than half-loaded: at 10 bytes the blob runs out before the
+    // trailer. A state missing its last byte is refused by the trailer instead — the trailer is
+    // checked before any field is parsed, so a blob cut short cannot be mistaken for a valid one.
     assert_eq!(
         machine.decode_state(&state[..10]),
         Err(StateError::Truncated)
     );
     assert_eq!(
         machine.decode_state(&state[..state.len() - 1]),
-        Err(StateError::Truncated)
+        Err(StateError::BadChecksum)
     );
     // The magic is checked before anything else is believed.
     let mut wrong_magic = state.clone();

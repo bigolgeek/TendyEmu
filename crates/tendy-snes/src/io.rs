@@ -304,8 +304,8 @@ impl CpuIo {
         self.div_remainder = r.u16()?;
         self.div_wait = r.u8()?;
         self.wmadd = r.u32()?;
-        // Not a §9.2 field (see [`CpuIo::nmi_write_edge`]): a restored machine starts at a frame
-        // boundary, where no store's edge is outstanding.
+        // Not a §9.2 field (see [`CpuIo::nmi_write_edge`]): a restored machine starts at an
+        // instruction boundary, where no store's edge is outstanding.
         self.nmi_write_edge = false;
         Ok(())
     }

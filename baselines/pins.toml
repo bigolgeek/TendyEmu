@@ -71,8 +71,9 @@ frame@600 = 4d235cbc7240f0f1
 frame@3000 = 5e0b61503f5f0bf1
 audio = 0631e5d53fa6a325
 audio_peak = 0.000031
-state@3000 = e9bba16690c4f188
-state_len@3000 = 38
+# moved on purpose: real device state (#71)
+state@3000 = 02794da605c4bc4c
+state_len@3000 = 264713
 roundtrip@3000 = ok
 
 [snes/refusals]
