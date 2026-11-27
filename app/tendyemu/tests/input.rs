@@ -31,6 +31,13 @@ impl Scratch {
     fn paths(&self) -> Paths {
         Paths::new(self.root.clone())
     }
+
+    /// Writes `bytes` as `name` inside the scratch folder and hands back the path.
+    fn rom(&self, name: &str, bytes: &[u8]) -> PathBuf {
+        let path = self.root.join(name);
+        fs::write(&path, bytes).expect("the scratch ROM is writable");
+        path
+    }
 }
 
 impl Drop for Scratch {
@@ -255,4 +262,26 @@ fn gamepad_merges_with_keys() {
         merged.contains(Buttons::RIGHT),
         "the stick's direction joins in"
     );
+}
+
+#[test]
+fn a_game_button_wins_a_key_the_window_also_uses() {
+    let scratch = Scratch::new("shared-key");
+    let rom = scratch.rom("Kwirk.gb", &gb_rom());
+    let mut app = App::new(scratch.paths());
+    app.open(&rom).expect("the built cartridge opens");
+
+    assert!(!keys::claimed(&app, "P"), "P is nobody's button at first");
+    let a = row_index(&app, "A");
+    assert!(keys::on_row(&mut app, a, RowAct::Key("P".to_string())));
+    assert_eq!(value(&app, "A"), "P");
+    assert!(keys::claimed(&app, "P"), "the button has the key");
+    assert!(!app.hotkey("P"), "so the window's key does nothing");
+    assert!(!app.paused(), "and P does not pause the game");
+
+    // Escape is a window key too: once A holds it, closing the drawer belongs to A.
+    assert!(keys::on_row(&mut app, a, RowAct::Key("Escape".to_string())));
+    assert_eq!(value(&app, "A"), "Escape");
+    assert!(keys::claimed(&app, "Escape"));
+    assert!(!keys::claimed(&app, "Tab"), "Tab is still the window's");
 }

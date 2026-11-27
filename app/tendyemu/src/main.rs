@@ -168,8 +168,17 @@ fn handle_keys(app: &mut App) {
         return;
     }
 
-    if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::F1)
-    {
+    // A game button keeps its key (#74), so a bound Escape neither opens the drawer nor is taken
+    // away from the player; the same guard covers M, F1 and Tab below.
+    if is_key_pressed(KeyCode::Escape) && !tendyemu::keys::claimed(app, "Escape") {
+        app.menu_mut().open();
+        app.refresh();
+    }
+    if is_key_pressed(KeyCode::M) && !tendyemu::keys::claimed(app, "M") {
+        app.menu_mut().open();
+        app.refresh();
+    }
+    if is_key_pressed(KeyCode::F1) && !tendyemu::keys::claimed(app, "F1") {
         app.menu_mut().open();
         app.refresh();
     }
@@ -184,7 +193,7 @@ fn handle_keys(app: &mut App) {
             app.hotkey(name);
         }
     }
-    app.set_fast_forward(is_key_down(KeyCode::Tab));
+    app.set_fast_forward(is_key_down(KeyCode::Tab) && !tendyemu::keys::claimed(app, "Tab"));
     let held = tendyemu::keys::held_names(app);
     app.set_held_buttons(held);
 }

@@ -316,6 +316,18 @@ pub fn pad(held: &[String], map: &Keymap) -> Buttons {
     pad
 }
 
+/// Whether one of the running system's buttons holds `key` (#74).
+///
+/// The button wins over the window's own keys: binding A to `P` leaves `P` to A and stops it
+/// pausing, and the same goes for the drawer's `Escape`/`M`/`F1` and fast-forward's `Tab`.
+pub fn claimed(app: &App, key: &str) -> bool {
+    live_map(app).is_some_and(|(_, map)| {
+        Buttons::ALL
+            .iter()
+            .any(|(button, _)| map.get(*button) == key)
+    })
+}
+
 /// The host-key names down this frame, as the window's key table reports them, for the running
 /// system's bindings. `main.rs` puts the result into [`App::set_held_buttons`].
 pub fn held_names(app: &App) -> Vec<String> {

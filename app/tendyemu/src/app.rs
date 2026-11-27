@@ -194,6 +194,11 @@ impl App {
     /// speed, `F5` save the selected state slot, `F7` load it. `false` for a key this window does
     /// not use, or for `F5`/`F7` with no game.
     pub fn hotkey(&mut self, key: &str) -> bool {
+        // #74: a game button keeps its key; the window's own key does nothing while one is bound
+        // to it, so the player never gets two actions from one press.
+        if keys::claimed(self, key) {
+            return false;
+        }
         match key {
             "P" => {
                 self.toggle_pause();
