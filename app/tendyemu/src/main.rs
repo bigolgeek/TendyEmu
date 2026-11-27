@@ -173,27 +173,6 @@ fn handle_keys(app: &mut App) {
         app.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
     }
     app.set_fast_forward(is_key_down(KeyCode::Tab));
-    app.set_held_buttons(held_buttons());
-}
-
-/// The fixed default keyboard map. #17 replaces it with the per-system `keys.txt` bindings.
-fn held_buttons() -> Vec<String> {
-    const MAP: [(KeyCode, &str); 12] = [
-        (KeyCode::Up, "up"),
-        (KeyCode::Down, "down"),
-        (KeyCode::Left, "left"),
-        (KeyCode::Right, "right"),
-        (KeyCode::Z, "a"),
-        (KeyCode::X, "b"),
-        (KeyCode::A, "y"),
-        (KeyCode::S, "x"),
-        (KeyCode::Q, "l"),
-        (KeyCode::W, "r"),
-        (KeyCode::Enter, "start"),
-        (KeyCode::Backspace, "select"),
-    ];
-    MAP.iter()
-        .filter(|(code, _)| is_key_down(*code))
-        .map(|(_, name)| (*name).to_string())
-        .collect()
+    let held = tendyemu::keys::held_names(app);
+    app.set_held_buttons(held);
 }
