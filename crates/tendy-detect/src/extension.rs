@@ -69,8 +69,13 @@ fn format_of(ext: &str) -> Option<(SystemKind, Format)> {
     Some(named)
 }
 
+/// Whether a file name's last extension names a system (§3.3).
+pub(crate) fn names_a_system(name: &str) -> bool {
+    extension_of(name).and_then(system_of).is_some()
+}
+
 /// The suffix after the last dot, or `None` (§3.3: matched on the last dot only).
-fn extension_of(name: &str) -> Option<&str> {
+pub(crate) fn extension_of(name: &str) -> Option<&str> {
     let (_, ext) = name.rsplit_once('.')?;
     (!ext.is_empty()).then_some(ext)
 }
