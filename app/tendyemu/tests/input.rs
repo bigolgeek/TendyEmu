@@ -1,0 +1,258 @@
+//! Keyboard and gamepad input, headless (DESIGN §8; issue #17).
+//!
+//! The four tests the design names: the two proving bindings are stored and restored per system,
+//! one proving every core's buttons can be reached from the keyboard, and one proving a pad and
+//! the keys merge rather than replace each other. The ROM images are built in code.
+
+use std::fs;
+use std::path::PathBuf;
+
+use tendy_core::{Buttons, SystemKind};
+use tendyemu::app::App;
+use tendyemu::gamepad;
+use tendyemu::keys::{self, Keymap};
+use tendyemu::menu::RowAct;
+use tendyemu::paths::Paths;
+
+/// A scratch config folder, removed when the test ends.
+struct Scratch {
+    root: PathBuf,
+}
+
+impl Scratch {
+    fn new(name: &str) -> Scratch {
+        let root =
+            std::env::temp_dir().join(format!("tendyemu-input-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("the scratch folder is writable");
+        Scratch { root }
+    }
+
+    fn paths(&self) -> Paths {
+        Paths::new(self.root.clone())
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+/// A 32 KiB Game Boy cartridge.
+fn gb_rom() -> Vec<u8> {
+    let mut rom = vec![0u8; 0x8000];
+    rom[0x100..0x104].copy_from_slice(&[0x00, 0xC3, 0x50, 0x01]);
+    rom[0x134..0x13C].copy_from_slice(b"INPUTGB ");
+    rom[0x147] = 0x00;
+    rom[0x148] = 0x00;
+    rom[0x149] = 0x00;
+    let mut sum = 0u8;
+    for byte in &rom[0x134..=0x14C] {
+        sum = sum.wrapping_sub(*byte).wrapping_sub(1);
+    }
+    rom[0x14D] = sum;
+    rom
+}
+
+/// An iNES cartridge: 16 KiB of PRG and 8 KiB of CHR.
+fn nes_rom() -> Vec<u8> {
+    let mut rom = vec![b'N', b'E', b'S', 0x1A, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    rom.extend(std::iter::repeat_n(0xEAu8, 16 * 1024));
+    rom.extend(std::iter::repeat_n(0x00u8, 8 * 1024));
+    let vectors = 16 + 16 * 1024 - 6;
+    for at in [vectors, vectors + 2, vectors + 4] {
+        rom[at] = 0x00;
+        rom[at + 1] = 0x80;
+    }
+    rom
+}
+
+/// A 32 KiB LoROM Super NES cartridge.
+fn snes_rom() -> Vec<u8> {
+    let mut rom = vec![0u8; 0x8000];
+    let at = 0x7FC0;
+    rom[at..at + 21].copy_from_slice(b"INPUT SNES TEST GAME ");
+    rom[at + 0x15] = 0x20;
+    rom[at + 0x16] = 0x00;
+    rom[at + 0x17] = 0x05;
+    rom
+}
+
+/// The value column of the row labelled `label` on the Input page.
+fn value(app: &App, label: &str) -> String {
+    keys::rows(app)
+        .into_iter()
+        .find(|row| row.label == label)
+        .unwrap_or_else(|| panic!("no {label} row"))
+        .value
+}
+
+/// The index of the row labelled `label` on the Input page.
+fn row_index(app: &App, label: &str) -> usize {
+    keys::rows(app)
+        .iter()
+        .position(|row| row.label == label)
+        .unwrap_or_else(|| panic!("no {label} row"))
+}
+
+/// The logical buttons a core uses (§2.5): the Game Boy has eight, the Advance adds the
+/// shoulders, the NES has eight, the Super NES has all twelve.
+fn core_buttons(system: SystemKind) -> Vec<Buttons> {
+    let mut buttons = vec![
+        Buttons::UP,
+        Buttons::DOWN,
+        Buttons::LEFT,
+        Buttons::RIGHT,
+        Buttons::A,
+        Buttons::B,
+        Buttons::START,
+        Buttons::SELECT,
+    ];
+    match system {
+        SystemKind::Gb | SystemKind::Nes => {}
+        SystemKind::Gba => buttons.extend([Buttons::L, Buttons::R]),
+        SystemKind::Snes => buttons.extend([Buttons::X, Buttons::Y, Buttons::L, Buttons::R]),
+    }
+    buttons
+}
+
+#[test]
+fn bindings_saved_per_system() {
+    let scratch = Scratch::new("saved");
+    let paths = scratch.paths();
+    let mut app = App::new(paths.clone());
+
+    // Rebind A on a Game Boy: the row the Input page shows writes `<root>/gb/keys.txt`.
+    app.open_bytes("one.gb", gb_rom(), None)
+        .expect("the Game Boy cart opens");
+    let at = row_index(&app, "A");
+    assert!(keys::on_row(&mut app, at, RowAct::Key("Q".into())));
+    let gb_file = paths.keys_file(SystemKind::Gb);
+    let gb = fs::read_to_string(&gb_file).expect("the Game Boy keys file was written");
+    assert!(gb.contains("a = Q"), "{gb}");
+    assert_eq!(value(&app, "A"), "Q", "the row shows the key just pressed");
+    assert!(
+        !paths.keys_file(SystemKind::Nes).exists(),
+        "rebinding one system did not write another"
+    );
+
+    // The same logical button on an NES, to a different key, lands in its own file.
+    app.open_bytes("one.nes", nes_rom(), None)
+        .expect("the NES cart opens");
+    let at = row_index(&app, "A");
+    assert!(keys::on_row(&mut app, at, RowAct::Key("K".into())));
+    let nes =
+        fs::read_to_string(paths.keys_file(SystemKind::Nes)).expect("the NES file was written");
+    assert!(nes.contains("a = K"), "{nes}");
+    assert!(!nes.contains("a = Q"), "{nes}");
+    assert_eq!(
+        fs::read_to_string(&gb_file).expect("the Game Boy file is still there"),
+        gb,
+        "the Game Boy file did not change when the NES was rebound"
+    );
+    assert_eq!(value(&app, "A"), "K");
+}
+
+#[test]
+fn bindings_restored_per_system() {
+    let scratch = Scratch::new("restored");
+    let paths = scratch.paths();
+
+    // Two systems, two files, written in the shipped format.
+    let mut gb = Keymap::builtin(SystemKind::Gb);
+    gb.rebind(Buttons::A, "Q");
+    keys::save(&paths, SystemKind::Gb, &gb).expect("the Game Boy file is writable");
+    let mut snes = Keymap::builtin(SystemKind::Snes);
+    snes.rebind(Buttons::A, "K");
+    keys::save(&paths, SystemKind::Snes, &snes).expect("the Super NES file is writable");
+
+    // A session starts on the file of whichever system it is running.
+    let mut app = App::new(paths.clone());
+    app.open_bytes("one.gb", gb_rom(), None)
+        .expect("the Game Boy cart opens");
+    assert_eq!(value(&app, "A"), "Q");
+    app.open_bytes("one.sfc", snes_rom(), None)
+        .expect("the Super NES cart opens");
+    assert_eq!(value(&app, "A"), "K");
+    // Back to a Game Boy image: its own file again, not the one just shown.
+    app.open_bytes("two.gb", gb_rom(), None)
+        .expect("a second Game Boy cart opens");
+    assert_eq!(value(&app, "A"), "Q");
+
+    // And each file still parses to the map that was saved.
+    assert_eq!(
+        keys::load(&paths, SystemKind::Gb).expect("the Game Boy file parses"),
+        gb
+    );
+    assert_eq!(
+        keys::load(&paths, SystemKind::Snes).expect("the Super NES file parses"),
+        snes
+    );
+}
+
+#[test]
+fn every_core_button_reachable_from_keyboard() {
+    for system in SystemKind::ALL {
+        let map = Keymap::builtin(system);
+        let buttons = core_buttons(system);
+        let held: Vec<String> = buttons
+            .iter()
+            .map(|button| map.get(*button).to_string())
+            .collect();
+
+        // One physical key a button, so the whole pad can be held at once.
+        let mut distinct = held.clone();
+        distinct.sort();
+        distinct.dedup();
+        assert_eq!(distinct.len(), held.len(), "{} reuses a key", system.key());
+
+        // Every one of those keys is a name the window table translates.
+        for key in &held {
+            assert!(Keymap::is_known(key), "{system:?}: {key}");
+        }
+
+        // Pressing them all reaches every button the core has.
+        let pad = keys::pad(&held, &map);
+        for button in &buttons {
+            assert!(pad.contains(*button), "{system:?}: {button:?}");
+        }
+    }
+
+    // The layouts really are per system: Game Boy and Super NES disagree on A and B, which is
+    // the issue's reason to exist.
+    let gb = Keymap::builtin(SystemKind::Gb);
+    let snes = Keymap::builtin(SystemKind::Snes);
+    assert_ne!(gb.get(Buttons::A), snes.get(Buttons::A));
+    assert_ne!(gb.get(Buttons::B), snes.get(Buttons::B));
+}
+
+#[test]
+fn gamepad_merges_with_keys() {
+    // A keyboard A, and a pad B held at the same time: both reach the pad word.
+    let map = Keymap::builtin(SystemKind::Gb);
+    let keyboard = keys::pad(&[map.get(Buttons::A).to_string()], &map);
+    assert_eq!(keyboard, Buttons::A);
+    let pad = gamepad::GamepadState::from_xinput(0x2000, 0, 0);
+    assert!(pad.is_down(gamepad::GamepadButton::B));
+    let merged = gamepad::merge(keyboard, Some(&pad));
+    assert!(
+        merged.contains(Buttons::A),
+        "the key the keyboard held is still down"
+    );
+    assert!(merged.contains(Buttons::B), "the pad's button joins it");
+    assert!(!merged.contains(Buttons::UP));
+
+    // No pad, or a stick push: the keyboard's bits are still there.
+    assert_eq!(gamepad::merge(keyboard, None), keyboard);
+    let stick = gamepad::GamepadState {
+        left_x: 0.9,
+        ..Default::default()
+    };
+    let merged = gamepad::merge(keyboard, Some(&stick));
+    assert!(merged.contains(Buttons::A));
+    assert!(
+        merged.contains(Buttons::RIGHT),
+        "the stick's direction joins in"
+    );
+}

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use macroquad::prelude::*;
 use tendyemu::app::App;
-use tendyemu::display::{self, DisplayOptions};
+use tendyemu::display::{self, Follower, Picture};
 use tendyemu::draw;
 use tendyemu::file_pick;
 use tendyemu::menu;
@@ -38,6 +38,8 @@ async fn main() {
 
     let mut texture: Option<Texture2D> = None;
     let mut picture_size = (0u16, 0u16);
+    let mut follower = Follower::new();
+    let mut fullscreen = display::options().fullscreen;
 
     loop {
         if is_quit_requested() || app.quit_requested() {
@@ -55,6 +57,16 @@ async fn main() {
 
         let win_w = screen_width();
         let win_h = screen_height();
+        let options = display::options();
+        if options.fullscreen != fullscreen {
+            set_fullscreen(options.fullscreen);
+            fullscreen = options.fullscreen;
+            // The display mode owns the size while fullscreen is on; on the way out the picture
+            // sizes the window again, as the NES front end does.
+            if !fullscreen {
+                follower = Follower::new();
+            }
+        }
         clear_background(draw::BG);
 
         if let Some(frame) = app.frame() {
@@ -67,25 +79,25 @@ async fn main() {
             } else if let Some(texture) = &texture {
                 texture.update_from_bytes(u32::from(width), u32::from(height), frame.rgba);
             }
+            // The picture's size is the machine's, never a constant: a Super Game Boy border or
+            // a core that changes shape mid-game resizes the window by the same rule (#18). While
+            // fullscreen the display mode owns the size.
+            let picture = Picture::from_frame((u32::from(width), u32::from(height)));
+            if !options.fullscreen
+                && let Some((w, h)) = follower.follow(Some(picture), options)
+            {
+                request_new_screen_size(w as f32, h as f32);
+            }
             if let Some(texture) = &texture {
-                let options = DisplayOptions {
-                    integer_scale: true,
-                    bar: true,
-                };
                 draw::blit(
                     texture,
-                    display::display_rect(
-                        (u32::from(width), u32::from(height)),
-                        &options,
-                        win_w,
-                        win_h,
-                        1.0,
-                    ),
+                    display::display_rect(picture, &options, win_w, win_h, screen_dpi_scale()),
                 );
             }
         } else {
             texture = None;
             picture_size = (0, 0);
+            follower.follow(None, options);
             match app.refusal() {
                 Some(why) => draw::paint_error(why, win_w, win_h),
                 None => draw::paint_idle(win_w, win_h, "Open a ROM to start"),
@@ -173,27 +185,6 @@ fn handle_keys(app: &mut App) {
         app.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
     }
     app.set_fast_forward(is_key_down(KeyCode::Tab));
-    app.set_held_buttons(held_buttons());
-}
-
-/// The fixed default keyboard map. #17 replaces it with the per-system `keys.txt` bindings.
-fn held_buttons() -> Vec<String> {
-    const MAP: [(KeyCode, &str); 12] = [
-        (KeyCode::Up, "up"),
-        (KeyCode::Down, "down"),
-        (KeyCode::Left, "left"),
-        (KeyCode::Right, "right"),
-        (KeyCode::Z, "a"),
-        (KeyCode::X, "b"),
-        (KeyCode::A, "y"),
-        (KeyCode::S, "x"),
-        (KeyCode::Q, "l"),
-        (KeyCode::W, "r"),
-        (KeyCode::Enter, "start"),
-        (KeyCode::Backspace, "select"),
-    ];
-    MAP.iter()
-        .filter(|(code, _)| is_key_down(*code))
-        .map(|(_, name)| (*name).to_string())
-        .collect()
+    let held = tendyemu::keys::held_names(app);
+    app.set_held_buttons(held);
 }
