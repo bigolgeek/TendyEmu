@@ -428,7 +428,10 @@ fn the_display_options_are_settings_and_survive_a_restart() {
     assert!(!options.bar, "the [app] status-bar flag");
 
     // The bar's height leaves the window when the bar is off.
-    let with_bar = DisplayOptions { bar: true, ..options };
+    let with_bar = DisplayOptions {
+        bar: true,
+        ..options
+    };
     let (_, without) = display::window_size(Picture::GAME_BOY, &options);
     let (_, with) = display::window_size(Picture::GAME_BOY, &with_bar);
     assert_eq!(with - without, BAR_H as i32);

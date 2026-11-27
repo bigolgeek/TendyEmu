@@ -460,7 +460,11 @@ pub fn on_row(app: &mut App, index: usize, act: RowAct) -> bool {
     let (section, key, value) = match row {
         DisplayRow::Scale => (config::APP, "scale", next.scale.to_string()),
         DisplayRow::Fullscreen => (config::APP, "fullscreen", next.fullscreen.to_string()),
-        DisplayRow::IntegerScale => (system.key(), "integer_scale", next.integer_scale.to_string()),
+        DisplayRow::IntegerScale => (
+            system.key(),
+            "integer_scale",
+            next.integer_scale.to_string(),
+        ),
         DisplayRow::Aspect => (
             SystemKind::Nes.key(),
             "aspect",

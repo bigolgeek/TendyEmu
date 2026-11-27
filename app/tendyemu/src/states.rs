@@ -64,12 +64,9 @@ pub fn step_slot(app: &mut App, direction: Direction) -> u8 {
         Direction::Left if at <= 1 => count,
         Direction::Left => at - 1,
     };
-    if let Err(why) = config::write_value(
-        app.paths(),
-        system.key(),
-        "state_slot",
-        &next.to_string(),
-    ) {
+    if let Err(why) =
+        config::write_value(app.paths(), system.key(), "state_slot", &next.to_string())
+    {
         app.show_notice(format!("state slot not written: {why}"), true);
     }
     next

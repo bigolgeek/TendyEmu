@@ -392,7 +392,9 @@ fn f5_and_f7_use_the_selected_slot_after_a_restart() {
     assert_eq!(states::step_slot(&mut app, Direction::Right), 2);
 
     let mut restarted = App::new(paths.clone());
-    restarted.open(&rom).expect("the built cartridge opens again");
+    restarted
+        .open(&rom)
+        .expect("the built cartridge opens again");
     assert_eq!(
         states::selected_slot(&restarted),
         2,

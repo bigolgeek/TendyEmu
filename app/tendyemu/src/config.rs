@@ -111,7 +111,10 @@ const GB_KEYS: &[Spec] = &[
 ];
 
 /// `[gba]`: the GBA front end's BIOS key, plus the state slot the shared slot row writes.
-const GBA_KEYS: &[Spec] = &[spec("bios", Kind::Text, ""), spec("state_slot", Kind::Int, "1")];
+const GBA_KEYS: &[Spec] = &[
+    spec("bios", Kind::Text, ""),
+    spec("state_slot", Kind::Int, "1"),
+];
 
 /// `[nes]`: nes `config.rs`'s keys, same names and defaults, plus the FDS BIOS #21 adds.
 const NES_KEYS: &[Spec] = &[

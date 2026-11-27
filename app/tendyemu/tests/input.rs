@@ -13,6 +13,7 @@ use tendyemu::gamepad;
 use tendyemu::keys::{self, Keymap};
 use tendyemu::menu::RowAct;
 use tendyemu::paths::Paths;
+use tendyemu::states;
 
 /// A scratch config folder, removed when the test ends.
 struct Scratch {
@@ -271,13 +272,16 @@ fn a_game_button_wins_a_key_the_window_also_uses() {
     let mut app = App::new(scratch.paths());
     app.open(&rom).expect("the built cartridge opens");
 
-    assert!(!keys::claimed(&app, "P"), "P is nobody's button at first");
+    assert!(!keys::claimed(&app, "F5"), "F5 is nobody's button at first");
     let a = row_index(&app, "A");
-    assert!(keys::on_row(&mut app, a, RowAct::Key("P".to_string())));
-    assert_eq!(value(&app, "A"), "P");
-    assert!(keys::claimed(&app, "P"), "the button has the key");
-    assert!(!app.hotkey("P"), "so the window's key does nothing");
-    assert!(!app.paused(), "and P does not pause the game");
+    assert!(keys::on_row(&mut app, a, RowAct::Key("F5".to_string())));
+    assert_eq!(value(&app, "A"), "F5");
+    assert!(keys::claimed(&app, "F5"), "the button has the key");
+    assert!(!app.hotkey("F5"), "so F5 saves nothing");
+    assert!(
+        !states::state_path(&scratch.paths(), SystemKind::Gb, &rom, 1).exists(),
+        "no state file was written"
+    );
 
     // Escape is a window key too: once A holds it, closing the drawer belongs to A.
     assert!(keys::on_row(&mut app, a, RowAct::Key("Escape".to_string())));
