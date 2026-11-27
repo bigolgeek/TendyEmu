@@ -40,7 +40,7 @@ pub struct Header {
 }
 
 /// The three candidate header positions, in the order a tie goes to.
-const CANDIDATES: [(usize, Board); 3] = [
+pub const CANDIDATES: [(usize, Board); 3] = [
     (0x7FC0, Board::LoRom),
     (0xFFC0, Board::HiRom),
     (0x40FFC0, Board::ExHiRom),
