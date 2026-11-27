@@ -12,6 +12,7 @@ use tendy_core::SystemKind;
 use tendy_core::state::{MAGIC, VERSION, unwrap};
 use tendyemu::app::App;
 use tendyemu::paths::Paths;
+use tendyemu::settings::Direction;
 use tendyemu::states;
 use tendyemu::thumb;
 
@@ -377,4 +378,39 @@ fn a_missing_or_truncated_thumbnail_draws_nothing() {
     fs::remove_file(&path).expect("garbage");
     fs::create_dir_all(&path).expect("a folder in its place");
     assert!(thumb::picture(&state, SystemKind::Gb).is_none());
+}
+
+#[test]
+fn f5_and_f7_use_the_selected_slot_after_a_restart() {
+    let scratch = Scratch::new("hotkeys");
+    let paths = scratch.paths();
+    let rom = scratch.rom("Kwirk.gb", &gb_rom());
+
+    let mut app = App::new(paths.clone());
+    app.open(&rom).expect("the built cartridge opens");
+    assert_eq!(states::selected_slot(&app), 1);
+    assert_eq!(states::step_slot(&mut app, Direction::Right), 2);
+
+    let mut restarted = App::new(paths.clone());
+    restarted
+        .open(&rom)
+        .expect("the built cartridge opens again");
+    assert_eq!(
+        states::selected_slot(&restarted),
+        2,
+        "the slot is a setting, not the process's memory"
+    );
+
+    assert!(restarted.hotkey("F5"));
+    let saved = states::state_path(&paths, SystemKind::Gb, &rom, 2);
+    assert!(saved.is_file(), "F5 writes the slot the file names");
+    assert!(
+        thumb::thumb_path(&saved, SystemKind::Gb).is_file(),
+        "with its picture"
+    );
+
+    assert!(restarted.hotkey("F7"));
+    let notice = restarted.notice().expect("the load leaves a notice");
+    assert_eq!(notice.text, "slot 2 loaded");
+    assert!(!notice.error);
 }

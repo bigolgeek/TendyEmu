@@ -249,6 +249,40 @@ fn state_digest(app: &mut App) -> u64 {
 }
 
 #[test]
+fn holding_the_rewind_key_steps_back_while_it_is_down() {
+    let scratch = Scratch::new("rewind-held");
+    let (_system, name, bytes) = all_roms()
+        .into_iter()
+        .find(|(system, ..)| *system == SystemKind::Gb)
+        .expect("a Game Boy image is built");
+    let path = scratch.rom(name, &bytes);
+    let mut app = App::new(scratch.paths());
+    app.open(&path)
+        .unwrap_or_else(|why| panic!("{name} opens: {why}"));
+    run(&mut app, 2.0);
+    run_frames(&mut app, 3);
+
+    let before = state_digest(&mut app);
+    let running = app.machine().expect("a game").frames();
+    app.set_rewinding(true);
+    app.tick(1.0 / 60.0);
+    let first = app.machine().expect("a game").frames();
+    assert!(first < running, "the frame counter goes back");
+    assert_ne!(state_digest(&mut app), before, "the picture steps back");
+
+    app.tick(1.0 / 60.0);
+    let held = app.machine().expect("a game").frames();
+    assert!(held <= first, "held, so the counter never climbs");
+
+    app.set_rewinding(false);
+    app.tick(1.0 / 30.0);
+    assert!(
+        app.machine().expect("a game").frames() > held,
+        "released, so frames run again"
+    );
+}
+
+#[test]
 fn wav_records_each_system() {
     let scratch = Scratch::new("wav");
     for (system, name, bytes) in all_roms() {

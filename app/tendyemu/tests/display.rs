@@ -15,8 +15,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use tendyemu::app::App;
+use tendyemu::config;
 use tendyemu::display::{self, Aspect, DisplayOptions, Follower, MAX_SCALE, MIN_SCALE, Picture};
+use tendyemu::menu::RowAct;
 use tendyemu::paths::Paths;
+use tendyemu::settings::Direction;
+use tendyemu::status_bar::BAR_H;
 
 /// A scratch config folder, removed when the test ends.
 struct Scratch {
@@ -405,4 +409,47 @@ fn integer_scale_fits() {
         assert_eq!(h, 240.0 * multiple as f32);
         assert!((w / h - 4.0 / 3.0).abs() < 1e-4, "{scale}x: {}", w / h);
     }
+}
+
+#[test]
+fn the_display_options_are_settings_and_survive_a_restart() {
+    let scratch = Scratch::new("options-file");
+    let paths = scratch.paths();
+    config::write_value(&paths, config::APP, "scale", "4").unwrap();
+    config::write_value(&paths, config::APP, "fullscreen", "true").unwrap();
+    config::write_value(&paths, config::APP, "status_bar", "false").unwrap();
+    config::write_value(&paths, "gb", "integer_scale", "false").unwrap();
+
+    let mut app = App::new(paths.clone());
+    let options = display::options(&app);
+    assert_eq!(options.scale, 4);
+    assert!(options.fullscreen, "the [app] fullscreen flag");
+    assert!(!options.integer_scale, "the GB section's own value");
+    assert!(!options.bar, "the [app] status-bar flag");
+
+    // The bar's height leaves the window when the bar is off.
+    let with_bar = DisplayOptions {
+        bar: true,
+        ..options
+    };
+    let (_, without) = display::window_size(Picture::GAME_BOY, &options);
+    let (_, with) = display::window_size(Picture::GAME_BOY, &with_bar);
+    assert_eq!(with - without, BAR_H as i32);
+
+    // A row writes the file; a new app reads the written value back.
+    assert!(display::on_row(&mut app, 0, RowAct::Step(Direction::Right)));
+    let restarted = App::new(paths.clone());
+    assert_eq!(display::options(&restarted).scale, 5);
+
+    // The NES's aspect key is that system's, not a process-wide value.
+    let rom = scratch.rom("game.nes", &nes_rom());
+    app.open(&rom).expect("the built NES cartridge opens");
+    config::write_value(&paths, "nes", "aspect", "4:3").unwrap();
+    assert_eq!(display::options(&app).aspect, Aspect::Four3);
+    let next = App::new(paths);
+    assert_eq!(
+        display::options(&next).aspect,
+        Aspect::Square,
+        "no game runs, so no 4:3"
+    );
 }

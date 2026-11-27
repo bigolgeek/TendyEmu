@@ -11,18 +11,18 @@
 //! | NES | `<stem>.state`, one state | `<stem>.png` |
 //! | SNES | `<stem>.slot<slot>.state`, slots 1–5 | `<stem>.slot<slot>.png` |
 //!
-//! The slot number, the save and the load also reach `keys.rs`'s `F5`/`F7` through
-//! [`selected_slot`], [`save_slot`] and [`load_slot`].
+//! The slot number, the save and the load also reach the window's `F5`/`F7` through
+//! [`selected_slot`], [`save_selected`] and [`load_selected`].
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU8, Ordering};
 
 use tendy_core::SystemKind;
 use tendy_core::state::{unwrap, wrap};
 
 use crate::app::App;
 use crate::battery;
+use crate::config;
 use crate::menu::{Row, RowAct, RowKind};
 use crate::paths::Paths;
 use crate::settings::Direction;
@@ -37,26 +37,38 @@ pub fn slot_count(system: SystemKind) -> u8 {
     }
 }
 
-/// The slot the drawer's slot row holds, shared with the hotkeys until #21 can write the setting
-/// back to `config.toml`.
-static SLOT: AtomicU8 = AtomicU8::new(1);
-
-/// The slot a save or a load uses.
-pub fn selected_slot() -> u8 {
-    SLOT.load(Ordering::Relaxed)
+/// The slot a save or a load uses: the running system's `state_slot` setting, inside the slots
+/// that system has. No game means slot 1.
+pub fn selected_slot(app: &App) -> u8 {
+    let Some(system) = app.system() else {
+        return 1;
+    };
+    let count = slot_count(system);
+    app.setting(system, "state_slot")
+        .and_then(|word| word.parse().ok())
+        .unwrap_or(1)
+        .clamp(1, count)
 }
 
-/// Moves the selected slot one step, wrapping at both ends, and returns the new slot.
-pub fn step_slot(system: SystemKind, direction: Direction) -> u8 {
+/// Moves the selected slot one step, wrapping at both ends, stores it as `state_slot` and returns
+/// the new slot.
+pub fn step_slot(app: &mut App, direction: Direction) -> u8 {
+    let Some(system) = app.system() else {
+        return 1;
+    };
     let count = slot_count(system);
-    let at = selected_slot().clamp(1, count);
+    let at = selected_slot(app);
     let next = match direction {
         Direction::Right if at >= count => 1,
         Direction::Right => at + 1,
         Direction::Left if at <= 1 => count,
         Direction::Left => at - 1,
     };
-    SLOT.store(next, Ordering::Relaxed);
+    if let Err(why) =
+        config::write_value(app.paths(), system.key(), "state_slot", &next.to_string())
+    {
+        app.show_notice(format!("state slot not written: {why}"), true);
+    }
     next
 }
 
@@ -133,6 +145,32 @@ pub fn load_slot(app: &mut App, slot: u8) -> Result<(), String> {
     machine.load_state(blob).map_err(|why| why.to_string())
 }
 
+/// Saves the selected slot with the drawer row's notice. `false` when no game runs.
+pub fn save_selected(app: &mut App) -> bool {
+    let Some(system) = app.system() else {
+        return false;
+    };
+    let slot = selected_slot(app).clamp(1, slot_count(system));
+    match save_slot(app, slot) {
+        Ok(text) => app.show_notice(text, false),
+        Err(text) => app.show_notice(text, true),
+    }
+    true
+}
+
+/// Loads the selected slot with the drawer row's notice. `false` when no game runs.
+pub fn load_selected(app: &mut App) -> bool {
+    let Some(system) = app.system() else {
+        return false;
+    };
+    let slot = selected_slot(app).clamp(1, slot_count(system));
+    match load_slot(app, slot) {
+        Ok(()) => app.show_notice(format!("slot {slot} loaded"), false),
+        Err(why) => app.show_notice(why, true),
+    }
+    true
+}
+
 /// The drawer's slot rows: the slot itself (when there is a choice), save, load.
 pub fn rows(app: &App) -> Vec<Row> {
     let Some(system) = app.system() else {
@@ -149,7 +187,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         )];
     };
     let count = slot_count(system);
-    let slot = selected_slot().clamp(1, count);
+    let slot = selected_slot(app).clamp(1, count);
     let mut rows = Vec::new();
     if count > 1 {
         rows.push(Row {
@@ -192,26 +230,18 @@ pub fn on_row(app: &mut App, index: usize, act: RowAct) -> bool {
     let count = slot_count(system);
     if count > 1 && index == 0 {
         if let RowAct::Step(direction) = act {
-            step_slot(system, direction);
+            step_slot(app, direction);
             return true;
         }
         return false;
     }
     let save_at = usize::from(count > 1);
     if index == save_at && act == RowAct::Activate {
-        let slot = selected_slot().clamp(1, count);
-        match save_slot(app, slot) {
-            Ok(text) => app.show_notice(text, false),
-            Err(text) => app.show_notice(text, true),
-        }
+        save_selected(app);
         return true;
     }
     if index == save_at + 1 && act == RowAct::Activate {
-        let slot = selected_slot().clamp(1, count);
-        match load_slot(app, slot) {
-            Ok(()) => app.show_notice(format!("slot {slot} loaded"), false),
-            Err(why) => app.show_notice(why, true),
-        }
+        load_selected(app);
         return true;
     }
     false

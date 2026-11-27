@@ -28,8 +28,6 @@ pub mod switch;
 pub mod thumb;
 pub mod timing;
 
-// Declared but not used yet: cpal arrives with the device half of `audio.rs`, png with the slot
-// thumbnails, tendy-spc with the cores' sound coprocessor (§6.1, all owned by later issues).
-use cpal as _;
-use png as _;
+// Declared but not used yet: tendy-spc arrives with the cores' sound coprocessor (§6.1, owned by
+// a later issue).
 use tendy_spc as _;

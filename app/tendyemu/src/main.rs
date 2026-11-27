@@ -12,7 +12,6 @@ use tendyemu::display::{self, Follower, Picture};
 use tendyemu::draw;
 use tendyemu::file_pick;
 use tendyemu::menu;
-use tendyemu::timing::SPEEDS;
 
 fn window_conf() -> Conf {
     Conf {
@@ -39,7 +38,7 @@ async fn main() {
     let mut texture: Option<Texture2D> = None;
     let mut picture_size = (0u16, 0u16);
     let mut follower = Follower::new();
-    let mut fullscreen = display::options().fullscreen;
+    let mut fullscreen = display::options(&app).fullscreen;
 
     loop {
         if is_quit_requested() || app.quit_requested() {
@@ -57,7 +56,7 @@ async fn main() {
 
         let win_w = screen_width();
         let win_h = screen_height();
-        let options = display::options();
+        let options = display::options(&app);
         if options.fullscreen != fullscreen {
             set_fullscreen(options.fullscreen);
             fullscreen = options.fullscreen;
@@ -104,7 +103,9 @@ async fn main() {
             }
         }
 
-        draw::paint_bar(&app.bar(), win_w, win_h);
+        if options.bar {
+            draw::paint_bar(&app.bar(), win_w, win_h);
+        }
 
         if app.menu().is_open() {
             let dw = menu::drawer_width(win_w);
@@ -112,6 +113,7 @@ async fn main() {
             let layout = menu::layout(dw, win_h, &entries, app.menu().first());
             let title = app.cart_title();
             draw::paint_drawer(&title, app.menu(), &entries, &layout, win_h);
+            draw::paint_state_thumb(&app, &entries, &layout, win_h, options.bar);
         }
 
         next_frame().await;
@@ -166,25 +168,35 @@ fn handle_keys(app: &mut App) {
         return;
     }
 
-    if is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::M) || is_key_pressed(KeyCode::F1)
-    {
+    // A game button keeps its key (#74), so a bound Escape neither opens the drawer nor is taken
+    // away from the player; the same guard covers M, F1 and Tab below.
+    if is_key_pressed(KeyCode::Escape) && !tendyemu::keys::claimed(app, "Escape") {
         app.menu_mut().open();
         app.refresh();
     }
-    if is_key_pressed(KeyCode::P) {
-        app.toggle_pause();
+    if is_key_pressed(KeyCode::M) && !tendyemu::keys::claimed(app, "M") {
+        app.menu_mut().open();
+        app.refresh();
     }
-    if is_key_pressed(KeyCode::F2) {
-        app.cycle_speed();
+    if is_key_pressed(KeyCode::F1) && !tendyemu::keys::claimed(app, "F1") {
+        app.menu_mut().open();
+        app.refresh();
     }
-    if is_key_pressed(KeyCode::F3) {
-        let at = SPEEDS
-            .iter()
-            .position(|speed| (*speed - app.speed()).abs() < f64::EPSILON)
-            .unwrap_or(0);
-        app.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
+    for (code, name) in [
+        (KeyCode::P, "P"),
+        (KeyCode::F2, "F2"),
+        (KeyCode::F3, "F3"),
+        (KeyCode::F5, "F5"),
+        (KeyCode::F7, "F7"),
+    ] {
+        if is_key_pressed(code) {
+            app.hotkey(name);
+        }
     }
-    app.set_fast_forward(is_key_down(KeyCode::Tab));
+    app.set_fast_forward(is_key_down(KeyCode::Tab) && !tendyemu::keys::claimed(app, "Tab"));
+    app.set_rewinding(
+        is_key_down(KeyCode::Backspace) && !tendyemu::keys::claimed(app, "Backspace"),
+    );
     let held = tendyemu::keys::held_names(app);
     app.set_held_buttons(held);
 }

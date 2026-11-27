@@ -47,6 +47,8 @@ pub struct App {
     recents: Vec<Recent>,
     speed: f64,
     fast_forward: bool,
+    /// The rewind key is down: `tick` restores snapshots instead of running frames.
+    rewinding: bool,
     paused: bool,
     muted: bool,
     quit: bool,
@@ -78,6 +80,7 @@ impl App {
             recents,
             speed: 1.0,
             fast_forward: false,
+            rewinding: false,
             paused: false,
             muted: false,
             quit: false,
@@ -190,6 +193,38 @@ impl App {
         self.speed = SPEEDS[(at + 1) % SPEEDS.len()];
     }
 
+    /// The session keys by name, one action each: `P` pause, `F2` next speed, `F3` previous
+    /// speed, `F5` save the selected state slot, `F7` load it. `false` for a key this window does
+    /// not use, or for `F5`/`F7` with no game.
+    pub fn hotkey(&mut self, key: &str) -> bool {
+        // #74: a game button keeps its key; the window's own key does nothing while one is bound
+        // to it, so the player never gets two actions from one press.
+        if keys::claimed(self, key) {
+            return false;
+        }
+        match key {
+            "P" => {
+                self.toggle_pause();
+                true
+            }
+            "F2" => {
+                self.cycle_speed();
+                true
+            }
+            "F3" => {
+                let at = SPEEDS
+                    .iter()
+                    .position(|speed| (*speed - self.speed).abs() < f64::EPSILON)
+                    .unwrap_or(0);
+                self.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
+                true
+            }
+            "F5" => states::save_selected(self),
+            "F7" => states::load_selected(self),
+            _ => false,
+        }
+    }
+
     pub fn fast_forward(&self) -> bool {
         self.fast_forward
     }
@@ -199,6 +234,22 @@ impl App {
         if on {
             self.pacer.reset();
         }
+    }
+
+    /// Reports the rewind key. A fresh hold starts the pacer from zero, as a pause does.
+    pub fn set_rewinding(&mut self, on: bool) {
+        if self.rewinding != on {
+            self.pacer.reset();
+        }
+        self.rewinding = on;
+    }
+
+    /// Forgets the rate bucket: no frames ran this tick, so there is no rate to report.
+    fn clear_fps(&mut self) {
+        self.fps = 0.0;
+        self.fps_frames = 0;
+        self.fps_secs = 0.0;
+        self.fps_prev = (0, 0.0);
     }
 
     /// The rate the loop is reaching, for the bar.
@@ -231,10 +282,10 @@ impl App {
         }
     }
 
-    /// A settings value, by system and §6.2 key. `None` means "use the default", which is what the
-    /// drawer shows until #21 reads `config.toml`.
-    pub fn setting(&self, _system: SystemKind, _key: &str) -> Option<String> {
-        None
+    /// A settings value, by system and §6.2 key: the game's own override first, then its section,
+    /// then `[app]`, then the built-in default. `None` only for a key this build does not know.
+    pub fn setting(&self, system: SystemKind, key: &str) -> Option<String> {
+        config::setting(self, system, key)
     }
 
     /// The running game's name for the drawer and the bar: the file's name, else the console's.
@@ -262,7 +313,7 @@ impl App {
             frame: self.machine.as_ref().map_or(0, |machine| machine.frames()),
             muted: self.muted,
             paused: self.paused,
-            held: self.held(),
+            held: self.held() || self.rewinding,
             notice: self.notice.as_ref().map(|notice| notice.text.clone()),
             notice_error: self.notice.as_ref().is_some_and(|notice| notice.error),
         }
@@ -431,12 +482,18 @@ impl App {
         if self.menu.is_open() {
             self.refresh();
         }
+        // Backspace held: restore the newest snapshot instead of running a frame (#77). The
+        // pacer waits, so releasing the key does not repay the frames spent held.
+        if self.rewinding && !self.menu.is_open() && rewind::enabled() {
+            self.pacer.reset();
+            self.clear_fps();
+            rewind::step_back(self);
+            self.run_hooks();
+            return 0;
+        }
         if self.held() {
             self.pacer.reset();
-            self.fps = 0.0;
-            self.fps_frames = 0;
-            self.fps_secs = 0.0;
-            self.fps_prev = (0, 0.0);
+            self.clear_fps();
             self.run_hooks();
             return 0;
         }

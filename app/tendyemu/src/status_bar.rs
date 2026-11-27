@@ -71,9 +71,12 @@ impl BarState {
         format!("{}x", self.speed.round() as i64)
     }
 
-    /// The rate slot's text: the frame rate, or dashes when the loop is held.
+    /// The rate slot's text: empty with no game, dashes while a game's loop is held, else the
+    /// rate.
     pub fn fps_label(&self) -> String {
-        if self.held {
+        if self.system.is_none() {
+            String::new()
+        } else if self.held {
             "-000.0 fps".to_string()
         } else {
             format!("{:03.1} fps", self.fps.min(999.9))
@@ -140,10 +143,13 @@ pub fn status_words(state: &BarState) -> Vec<Word> {
             kind: WordKind::Stat,
         });
     }
-    words.push(Word {
-        text: state.fps_label(),
-        kind: WordKind::Stat,
-    });
+    let fps = state.fps_label();
+    if !fps.is_empty() {
+        words.push(Word {
+            text: fps,
+            kind: WordKind::Stat,
+        });
+    }
     words.push(Word {
         text: state.speed_label(),
         kind: WordKind::Stat,
@@ -233,6 +239,18 @@ mod tests {
                 .iter()
                 .any(|word| word.text == "PAUSED")
         );
+    }
+
+    #[test]
+    fn no_game_leaves_the_rate_slot_empty() {
+        let mut state = state();
+        state.system = None;
+        state.held = true;
+        assert_eq!(state.fps_label(), "");
+        let words = status_words(&state);
+        let texts: Vec<&str> = words.iter().map(|word| word.text.as_str()).collect();
+        assert!(!texts.contains(&"-000.0 fps"), "{texts:?}");
+        assert!(!texts.contains(&"000.0 fps"), "{texts:?}");
     }
 
     #[test]
