@@ -185,3 +185,20 @@ fn per_game_overrides_system_section() {
         Some("4")
     );
 }
+
+#[test]
+fn the_app_reads_the_settings_file() {
+    let scratch = Scratch::new("app-setting");
+    let paths = scratch.paths();
+    config::write_value(&paths, config::APP, "scale", "4").unwrap();
+    config::write_value(&paths, "nes", "integer_scale", "true").unwrap();
+
+    let app = App::new(paths);
+    assert_eq!(app.setting(SystemKind::Gb, "scale").as_deref(), Some("4"));
+    assert_eq!(
+        app.setting(SystemKind::Nes, "integer_scale").as_deref(),
+        Some("true"),
+        "the system section's own value"
+    );
+    assert_eq!(app.setting(SystemKind::Gb, "no_such_key"), None);
+}

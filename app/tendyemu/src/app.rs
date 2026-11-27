@@ -231,10 +231,10 @@ impl App {
         }
     }
 
-    /// A settings value, by system and §6.2 key. `None` means "use the default", which is what the
-    /// drawer shows until #21 reads `config.toml`.
-    pub fn setting(&self, _system: SystemKind, _key: &str) -> Option<String> {
-        None
+    /// A settings value, by system and §6.2 key: the game's own override first, then its section,
+    /// then `[app]`, then the built-in default. `None` only for a key this build does not know.
+    pub fn setting(&self, system: SystemKind, key: &str) -> Option<String> {
+        config::setting(self, system, key)
     }
 
     /// The running game's name for the drawer and the bar: the file's name, else the console's.
