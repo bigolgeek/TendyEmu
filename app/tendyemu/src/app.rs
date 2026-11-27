@@ -20,6 +20,12 @@ use crate::{
     screenshot, settings, states, switch, thumb,
 };
 
+/// How long a bucket of frames counts for before the bar's rate moves on.
+///
+/// One bucket alone cannot report 59.7 on a 144 Hz display: whole frames in half a second come to
+/// 29 or 30, which reads 58 or 60. The bar averages the last complete bucket with the one filling.
+const FPS_BUCKET_SECS: f64 = 0.5;
+
 /// A line in the status bar's right-hand slot.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Notice {
@@ -46,6 +52,10 @@ pub struct App {
     quit: bool,
     held: Vec<String>,
     fps: f64,
+    /// Frames and seconds in the bucket filling now, and in the one that closed before it.
+    fps_frames: u32,
+    fps_secs: f64,
+    fps_prev: (u32, f64),
     /// Seconds since the app started, the clock notices age on.
     clock: f64,
     notice: Option<Notice>,
@@ -73,6 +83,9 @@ impl App {
             quit: false,
             held: Vec::new(),
             fps: 0.0,
+            fps_frames: 0,
+            fps_secs: 0.0,
+            fps_prev: (0, 0.0),
             clock: 0.0,
             notice: None,
             refusal: None,
@@ -421,6 +434,9 @@ impl App {
         if self.held() {
             self.pacer.reset();
             self.fps = 0.0;
+            self.fps_frames = 0;
+            self.fps_secs = 0.0;
+            self.fps_prev = (0, 0.0);
             self.run_hooks();
             return 0;
         }
@@ -436,8 +452,18 @@ impl App {
         }
         if ran == 0 {
             self.run_hooks();
-        } else if dt > 0.0 {
-            self.fps = ran as f64 / dt;
+        }
+        self.fps_frames += ran;
+        self.fps_secs += dt;
+        if self.fps_secs >= FPS_BUCKET_SECS {
+            self.fps_prev = (self.fps_frames, self.fps_secs);
+            self.fps_frames = 0;
+            self.fps_secs = 0.0;
+        }
+        let (prev_frames, prev_secs) = self.fps_prev;
+        let secs = prev_secs + self.fps_secs;
+        if secs > 0.0 {
+            self.fps = f64::from(prev_frames + self.fps_frames) / secs;
         }
         ran
     }
@@ -668,6 +694,29 @@ mod tests {
         // accumulation rounds up; either is the pacer doing its job.
         assert!((59..=60).contains(&ran), "{ran} frames");
         assert!(app.fps() > 0.0);
+    }
+
+    /// The bar's rate after `ticks` ticks of `dt` seconds at `speed`.
+    fn fps_after(name: &str, ticks: u32, dt: f64, speed: f64) -> f64 {
+        let mut app = App::new(scratch(name));
+        app.open_bytes("test.gb", gb_rom(), None).expect("opens");
+        app.set_speed(speed);
+        for _ in 0..ticks {
+            app.tick(dt);
+        }
+        app.fps()
+    }
+
+    #[test]
+    fn the_fps_reading_is_a_window_not_one_tick() {
+        // A 144 Hz tick runs one frame, which used to be read as 144 fps; three seconds of the
+        // same ticks has to settle on the machine's own rate.
+        let at_144 = fps_after("fps-144", 3 * 144, 1.0 / 144.0, 1.0);
+        assert!((59.0..=61.0).contains(&at_144), "{at_144} fps at 144 Hz");
+        let at_60 = fps_after("fps-60", 3 * 60, 1.0 / 60.0, 1.0);
+        assert!((59.0..=61.0).contains(&at_60), "{at_60} fps at 60 Hz");
+        let twice = fps_after("fps-2x", 3 * 144, 1.0 / 144.0, 2.0);
+        assert!((118.0..=121.0).contains(&twice), "{twice} fps at 2x");
     }
 
     #[test]
