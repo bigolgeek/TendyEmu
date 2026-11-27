@@ -22,7 +22,7 @@ pub enum StateError {
 /// The four bytes every state file starts with.
 pub const STATE_MAGIC: [u8; 4] = *b"SNST";
 /// The state layout version. Any field change bumps it.
-pub const STATE_VERSION: u16 = 2;
+pub const STATE_VERSION: u16 = 3;
 
 /// FNV-1a, 64-bit, from the offset basis.
 pub fn fnv1a64(bytes: &[u8]) -> u64 {

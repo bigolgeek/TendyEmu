@@ -6,9 +6,10 @@
 //! - **The DSP hash is idle output.** No ROM in the public `snes-test-roms` suite plays music, so
 //!   `audio` and `audio_peak` record the DSP's silence (peak 0.000031). The hash says the APU's
 //!   idle path is unchanged, not that the DSP voices are.
-//! - **The state blob is a 38-byte scaffold (#69).** It holds the version and three frame
-//!   counters, no device state. It is pinned so that a later real serialisation, or an accidental
-//!   layout change now, shows up as a diff.
+//! - **The state pin no longer tracks the source core.** The source's `encode_state` wrote a
+//!   38-byte scaffold; #71 replaced it with real device state, so `state@3000` and
+//!   `state_len@3000` were re-recorded from the wrapper on purpose. They guard the serialised
+//!   layout from accidental change; the round trip itself is proven in `save_state.rs`.
 //! - **One ROM is one viewpoint.** `snes/test-rom` drives INIDISP only; the pins say nothing about
 //!   DMA/HDMA timing, sprite priority, Mode 7, SRAM or any coprocessor's emulation. The moved test
 //!   files (`dma`, `layers`, `sprites`, `map`, …) are that coverage; the pins guard the whole
@@ -143,7 +144,7 @@ fn snes_pins_cover_every_run() {
     assert_eq!(runs, ["snes/refusals", "snes/test-rom"]);
 }
 
-/// `snes/test-rom`: the frame checksums, the DSP hash and the 38-byte state blob at frame 3000.
+/// `snes/test-rom`: the frame checksums, the DSP hash and the state blob at frame 3000.
 #[test]
 fn snes_pins_test_rom() {
     let Some(bytes) = test_rom() else { return };
@@ -185,7 +186,7 @@ fn snes_pins_test_rom() {
     assert_eq!(
         blob.len().to_string(),
         pinned(&pins, "snes/test-rom", "state_len@3000"),
-        "the state blob is the 38-byte scaffold (#69)"
+        "the state blob layout changed (#71 re-recorded this pin)"
     );
 }
 

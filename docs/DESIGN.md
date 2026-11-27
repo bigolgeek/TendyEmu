@@ -1407,8 +1407,10 @@ What the pins do **not** cover at these commits (#5 measured):
 
 - **SNES audio is idle.** No ROM in `snes-test-roms` v20210217 plays music, so the DSP hash records silence (peak
   0.000031). It proves the path runs, not that it sounds right.
-- **SNES state is a scaffold.** `encode_state` (`snes src/machine.rs:142`) writes the version and three counters —
-  38 bytes — and no device state. The pin is real but pins nothing a device change would move.
+- **SNES state is no longer the source scaffold.** The source at `bf3c60b` saved a version and three counters
+  (38 bytes, no device state). #71 replaced that with real device state, so `snes/test-rom`'s `state@3000` and
+  `state_len@3000` were re-recorded from the wrapper (marked in `baselines/pins.toml`) and no longer describe the
+  source core. They now guard the serialised layout; the round trip is proven in `crates/tendy-snes/tests/save_state.rs`.
 - **SGB sound and FDS runs are skipped** until the owner supplies `sgb-cartridge.bin`, `fds-bios.rom` and
   `fds-game.fds` in `TENDY_TEST_ROMS`. Those two paths import without a baseline.
 
@@ -1734,7 +1736,7 @@ decisions that changed what this document or the spec says.
 | Two checkouts sharing one `CARGO_TARGET_DIR` | cargo can run the other checkout's stale build, and tests pass on old code | Each worktree or clone uses its own target folder (#5 clones included) |
 | `Cargo.lock` conflicts between lanes | merge friction | Regenerate; never merge by hand (§7.1) |
 | Test ROM licences: nes's fetch script states its ROMs have unclear licences | they cannot be committed | Fetched or local only; never committed (§10) |
-| SNES save states are a scaffold at `bf3c60b` (`src/machine.rs:142` saves a version and three counters, 38 bytes, no device state) | saving a SNES state appears to work and restores nothing; loading rewinds only the frame counter | Decided in #69: make them real for 0.1.0 — #71 (M5) serialises every device, with a save → run → load → run round-trip proof. GB, GBA and NES states are real (137 KB, 550 KB, full RAM) |
+| SNES save states were a scaffold at `bf3c60b` (`src/machine.rs:142` saved a version and three counters, 38 bytes, no device state) | saving a SNES state appeared to work and restored nothing; loading rewound only the frame counter | **Closed in #71 (decided in #69):** `Machine::encode_state` serialises every device in a fixed order (version 3, 264 713 bytes on `snes/test-rom`), and `save_state.rs` proves the frame + audio + state round trip, including a mid-frame save. GB, GBA and NES states are real (137 KB, 550 KB, full RAM) |
 | Edition 2024 | needs Rust 1.85 or newer | State it in the README (#31) |
 
 ### 9.3 UNVERIFIED items (each with the check that settles it)
