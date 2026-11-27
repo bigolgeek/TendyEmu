@@ -1,10 +1,17 @@
 //! Painting the window (DESIGN §6.1, §7.2): the picture, the status bar, the drawer, the refusal
 //! screen. Together with `main.rs` this is the only place macroquad is named.
 
+use std::cell::RefCell;
+use std::path::PathBuf;
+use std::time::SystemTime;
+
 use macroquad::prelude::*;
 
-use crate::menu::{self, Entry, Layout, Menu, RowKind};
+use crate::app::App;
+use crate::menu::{self, Entry, Layout, Menu, RowKind, Slot};
+use crate::states;
 use crate::status_bar::{self, BarState};
+use crate::thumb;
 
 /// The window's background.
 pub const BG: Color = Color::new(0.055, 0.06, 0.075, 1.0);
@@ -264,4 +271,143 @@ pub fn paint_error(message: &str, win_w: f32, win_h: f32) {
         13.0,
         DIM,
     );
+}
+
+/// The selected slot's saved picture, beside the drawer's State rows (#76). Nothing to draw
+/// without a saved slot.
+pub fn paint_state_thumb(app: &App, entries: &[Entry], layout: &Layout, win_h: f32, bar: bool) {
+    let anchor = layout.slots.iter().find(|slot| {
+        matches!(
+            entries.get(slot.index),
+            Some(Entry::Item(item))
+                if matches!(item.row.label.as_str(), "State slot" | "Save state")
+        )
+    });
+    let (Some(anchor), Some(texture)) = (anchor, thumb_texture(app)) else {
+        return;
+    };
+    let size = (texture.width() as u32, texture.height() as u32);
+    let Some((x, y, w, h)) = thumb_rect(layout, anchor, size, screen_width(), win_h, bar) else {
+        return;
+    };
+    draw_rectangle(x - 1.0, y - 1.0, w + 2.0, h + 2.0, FILL);
+    draw_texture_ex(
+        &texture,
+        x,
+        y,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(vec2(w, h)),
+            ..Default::default()
+        },
+    );
+}
+
+/// How much of its own size a saved picture is drawn at beside the drawer.
+const THUMB_SCALE: f32 = 0.5;
+/// The gap between the drawer's edge and the picture, and around the picture in the strip.
+const THUMB_MARGIN: f32 = 8.0;
+
+/// Where a saved picture lands: centred on `slot` in the strip beside the drawer, or `None` when
+/// the strip or the window is too small for it.
+pub(crate) fn thumb_rect(
+    layout: &Layout,
+    slot: &Slot,
+    size: (u32, u32),
+    win_w: f32,
+    win_h: f32,
+    bar: bool,
+) -> Option<(f32, f32, f32, f32)> {
+    let (w, h) = (size.0 as f32 * THUMB_SCALE, size.1 as f32 * THUMB_SCALE);
+    let room = win_h - if bar { status_bar::BAR_H } else { 0.0 };
+    if w <= 0.0 || h <= 0.0 || w + 2.0 * THUMB_MARGIN > win_w - layout.dw {
+        return None;
+    }
+    if room - h - 2.0 * THUMB_MARGIN < 0.0 {
+        return None;
+    }
+    let x = layout.dw + THUMB_MARGIN;
+    let y = (slot.y + (slot.h - h) / 2.0).clamp(THUMB_MARGIN, room - h - THUMB_MARGIN);
+    Some((x, y, w, h))
+}
+
+struct CachedThumb {
+    state: PathBuf,
+    stamp: (Option<SystemTime>, u64),
+    texture: Texture2D,
+}
+
+thread_local! {
+    static THUMB: RefCell<Option<CachedThumb>> = const { RefCell::new(None) };
+}
+
+/// The selected slot's picture as a texture, reloaded when the file changes.
+fn thumb_texture(app: &App) -> Option<Texture2D> {
+    let system = app.system()?;
+    let state = states::state_path(app.paths(), system, app.rom()?, states::selected_slot(app));
+    let meta = std::fs::metadata(thumb::thumb_path(&state, system)).ok()?;
+    let stamp = (meta.modified().ok(), meta.len());
+    THUMB.with(|cell| {
+        let mut cache = cell.borrow_mut();
+        if let Some(cached) = cache.as_ref()
+            && cached.state == state
+            && cached.stamp == stamp
+        {
+            return Some(cached.texture.clone());
+        }
+        let image = thumb::picture(&state, system)?;
+        let texture = Texture2D::from_rgba8(image.width as u16, image.height as u16, &image.rgba);
+        texture.set_filter(FilterMode::Nearest);
+        *cache = Some(CachedThumb {
+            state,
+            stamp,
+            texture: texture.clone(),
+        });
+        Some(texture)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn layout() -> Layout {
+        Layout {
+            dw: 300.0,
+            slots: vec![Slot {
+                index: 0,
+                y: 100.0,
+                h: 24.0,
+                arrows: false,
+                item: true,
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn the_thumb_centres_on_the_state_row_at_half_size() {
+        let layout = layout();
+        let (x, y, w, h) = thumb_rect(&layout, &layout.slots[0], (160, 144), 960.0, 720.0, true)
+            .expect("the picture fits");
+        assert_eq!((x, y, w, h), (308.0, 76.0, 80.0, 72.0));
+    }
+
+    #[test]
+    fn the_thumb_is_dropped_when_the_strip_is_too_narrow() {
+        let layout = layout();
+        assert_eq!(
+            thumb_rect(&layout, &layout.slots[0], (160, 144), 380.0, 720.0, true),
+            None
+        );
+    }
+
+    #[test]
+    fn the_thumb_is_dropped_when_the_window_is_too_short() {
+        let layout = layout();
+        assert_eq!(
+            thumb_rect(&layout, &layout.slots[0], (160, 144), 960.0, 100.0, true),
+            None
+        );
+    }
 }

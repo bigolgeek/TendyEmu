@@ -190,6 +190,33 @@ impl App {
         self.speed = SPEEDS[(at + 1) % SPEEDS.len()];
     }
 
+    /// The session keys by name, one action each: `P` pause, `F2` next speed, `F3` previous
+    /// speed, `F5` save the selected state slot, `F7` load it. `false` for a key this window does
+    /// not use, or for `F5`/`F7` with no game.
+    pub fn hotkey(&mut self, key: &str) -> bool {
+        match key {
+            "P" => {
+                self.toggle_pause();
+                true
+            }
+            "F2" => {
+                self.cycle_speed();
+                true
+            }
+            "F3" => {
+                let at = SPEEDS
+                    .iter()
+                    .position(|speed| (*speed - self.speed).abs() < f64::EPSILON)
+                    .unwrap_or(0);
+                self.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
+                true
+            }
+            "F5" => states::save_selected(self),
+            "F7" => states::load_selected(self),
+            _ => false,
+        }
+    }
+
     pub fn fast_forward(&self) -> bool {
         self.fast_forward
     }

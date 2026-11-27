@@ -12,7 +12,6 @@ use tendyemu::display::{self, Follower, Picture};
 use tendyemu::draw;
 use tendyemu::file_pick;
 use tendyemu::menu;
-use tendyemu::timing::SPEEDS;
 
 fn window_conf() -> Conf {
     Conf {
@@ -114,6 +113,7 @@ async fn main() {
             let layout = menu::layout(dw, win_h, &entries, app.menu().first());
             let title = app.cart_title();
             draw::paint_drawer(&title, app.menu(), &entries, &layout, win_h);
+            draw::paint_state_thumb(&app, &entries, &layout, win_h, options.bar);
         }
 
         next_frame().await;
@@ -173,18 +173,16 @@ fn handle_keys(app: &mut App) {
         app.menu_mut().open();
         app.refresh();
     }
-    if is_key_pressed(KeyCode::P) {
-        app.toggle_pause();
-    }
-    if is_key_pressed(KeyCode::F2) {
-        app.cycle_speed();
-    }
-    if is_key_pressed(KeyCode::F3) {
-        let at = SPEEDS
-            .iter()
-            .position(|speed| (*speed - app.speed()).abs() < f64::EPSILON)
-            .unwrap_or(0);
-        app.set_speed(SPEEDS[(at + SPEEDS.len() - 1) % SPEEDS.len()]);
+    for (code, name) in [
+        (KeyCode::P, "P"),
+        (KeyCode::F2, "F2"),
+        (KeyCode::F3, "F3"),
+        (KeyCode::F5, "F5"),
+        (KeyCode::F7, "F7"),
+    ] {
+        if is_key_pressed(code) {
+            app.hotkey(name);
+        }
     }
     app.set_fast_forward(is_key_down(KeyCode::Tab));
     let held = tendyemu::keys::held_names(app);
