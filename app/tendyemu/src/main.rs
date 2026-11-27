@@ -194,6 +194,7 @@ fn handle_keys(app: &mut App) {
         }
     }
     app.set_fast_forward(is_key_down(KeyCode::Tab) && !tendyemu::keys::claimed(app, "Tab"));
+    app.set_rewinding(is_key_down(KeyCode::Backspace) && !tendyemu::keys::claimed(app, "Backspace"));
     let held = tendyemu::keys::held_names(app);
     app.set_held_buttons(held);
 }

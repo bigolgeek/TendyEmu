@@ -47,6 +47,8 @@ pub struct App {
     recents: Vec<Recent>,
     speed: f64,
     fast_forward: bool,
+    /// The rewind key is down: `tick` restores snapshots instead of running frames.
+    rewinding: bool,
     paused: bool,
     muted: bool,
     quit: bool,
@@ -78,6 +80,7 @@ impl App {
             recents,
             speed: 1.0,
             fast_forward: false,
+            rewinding: false,
             paused: false,
             muted: false,
             quit: false,
@@ -233,6 +236,22 @@ impl App {
         }
     }
 
+    /// Reports the rewind key. A fresh hold starts the pacer from zero, as a pause does.
+    pub fn set_rewinding(&mut self, on: bool) {
+        if self.rewinding != on {
+            self.pacer.reset();
+        }
+        self.rewinding = on;
+    }
+
+    /// Forgets the rate bucket: no frames ran this tick, so there is no rate to report.
+    fn clear_fps(&mut self) {
+        self.fps = 0.0;
+        self.fps_frames = 0;
+        self.fps_secs = 0.0;
+        self.fps_prev = (0, 0.0);
+    }
+
     /// The rate the loop is reaching, for the bar.
     pub fn fps(&self) -> f64 {
         self.fps
@@ -294,7 +313,7 @@ impl App {
             frame: self.machine.as_ref().map_or(0, |machine| machine.frames()),
             muted: self.muted,
             paused: self.paused,
-            held: self.held(),
+            held: self.held() || self.rewinding,
             notice: self.notice.as_ref().map(|notice| notice.text.clone()),
             notice_error: self.notice.as_ref().is_some_and(|notice| notice.error),
         }
@@ -463,12 +482,18 @@ impl App {
         if self.menu.is_open() {
             self.refresh();
         }
+        // Backspace held: restore the newest snapshot instead of running a frame (#77). The
+        // pacer waits, so releasing the key does not repay the frames spent held.
+        if self.rewinding && !self.menu.is_open() && rewind::enabled() {
+            self.pacer.reset();
+            self.clear_fps();
+            rewind::step_back(self);
+            self.run_hooks();
+            return 0;
+        }
         if self.held() {
             self.pacer.reset();
-            self.fps = 0.0;
-            self.fps_frames = 0;
-            self.fps_secs = 0.0;
-            self.fps_prev = (0, 0.0);
+            self.clear_fps();
             self.run_hooks();
             return 0;
         }

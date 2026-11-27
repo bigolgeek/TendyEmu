@@ -312,7 +312,8 @@ thread_local! {
     static SESSION: RefCell<Session> = RefCell::new(Session::new());
 }
 
-/// The span the settings ask for: `rewind_seconds`, or [`DEFAULT_SECONDS`] until #21 reads the file.
+/// The span the settings ask for: `rewind_seconds`, or [`DEFAULT_SECONDS`] when the key is not
+/// set.
 fn wanted_seconds(app: &App) -> u64 {
     let system = app.system().unwrap_or(SystemKind::Gb);
     app.setting(system, "rewind_seconds")
@@ -398,8 +399,14 @@ pub fn on_row(app: &mut App, index: usize, act: RowAct) -> bool {
     }
 }
 
-/// Restores the newest snapshot. `false` when there is none, or when the core refuses it.
-fn step_back(app: &mut App) -> bool {
+/// Whether the player asked for snapshots (the drawer's Rewind row).
+pub fn enabled() -> bool {
+    SESSION.with(|cell| cell.borrow().enabled)
+}
+
+/// Restores the newest snapshot (the drawer's Step back row, and the held Backspace). `false`
+/// when there is none, or when the core refuses it.
+pub fn step_back(app: &mut App) -> bool {
     let Some(machine) = app.machine_mut() else {
         return false;
     };
