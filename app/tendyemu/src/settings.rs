@@ -106,6 +106,14 @@ fn system(row: Row) -> Option<SystemKind> {
     }
 }
 
+/// The systems that see the row: a shared row is on every menu, a system's row only on its own.
+fn systems(row: Row) -> crate::menu::Systems {
+    match system(row) {
+        Some(system) => crate::menu::Systems::only(system),
+        None => crate::menu::Systems::ALL,
+    }
+}
+
 fn visible(row: Row, running: Option<SystemKind>) -> bool {
     system(row).is_none_or(|system| running == Some(system))
 }
@@ -202,7 +210,7 @@ pub fn rows(app: &App) -> Vec<DrawerRow> {
             kind: kind(*row),
             desc: desc(*row),
             hotkey: "",
-            systems: crate::menu::Systems::ALL,
+            systems: systems(*row),
             requires: None,
             act: None,
         })

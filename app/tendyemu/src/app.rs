@@ -288,6 +288,19 @@ impl App {
         config::setting(self, system, key)
     }
 
+    /// The FDS BIOS file the `[nes] fds_bios` setting names, or `None` when it is empty.
+    ///
+    /// The system section, not a per-game override: the BIOS belongs to the console, and a disk
+    /// that cannot open can never be running long enough to have a per-game setting either.
+    pub fn fds_bios(&self) -> Option<PathBuf> {
+        let key = settings::key(settings::Row::NesFdsBios);
+        config::load(self.paths())
+            .config
+            .value(SystemKind::Nes, key)
+            .filter(|value| !value.trim().is_empty())
+            .map(PathBuf::from)
+    }
+
     /// The running game's name for the drawer and the bar: the file's name, else the console's.
     pub fn cart_title(&self) -> String {
         if let Some(name) = self.rom.as_deref().and_then(Path::file_name) {
@@ -400,7 +413,15 @@ impl App {
     ) -> Result<SystemKind, String> {
         let (entry, detected) =
             tendy_detect::open(name, bytes).map_err(|refusal| refusal.to_string())?;
-        let mut machine = loader::build_with_rom(&entry, &detected, path)?;
+        let bios = self.fds_bios();
+        let mut machine = loader::build_with(
+            &entry,
+            &detected,
+            loader::Sources {
+                rom: path,
+                fds_bios: bios.as_deref(),
+            },
+        )?;
         let rate = machine.frame_rate();
         machine.set_sample_rate(self.sample_rate);
 
