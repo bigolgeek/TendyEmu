@@ -26,6 +26,14 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // The library sweep runs without a picture: `tendyemu --headless <folder>` prints one row per
+    // ROM and exits with the report's own code.
+    {
+        let mut args = std::env::args_os();
+        if args.nth(1).is_some_and(|first| first == "--headless") {
+            std::process::exit(tendyemu::headless::cli(&args.collect::<Vec<_>>()));
+        }
+    }
     let mut app = App::with_default_paths();
     file_pick::set_interactive(true);
     if let Some(argument) = std::env::args_os().nth(1) {
