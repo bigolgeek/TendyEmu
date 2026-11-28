@@ -14,7 +14,6 @@ use tendyemu::keys::{self, Keymap};
 use tendyemu::menu::RowAct;
 use tendyemu::paths::Paths;
 use tendyemu::rewind;
-use tendyemu::states;
 
 /// A scratch config folder, removed when the test ends.
 struct Scratch {
@@ -206,11 +205,15 @@ fn bindings_restored_per_system() {
 
     // And each file still parses to the map that was saved.
     assert_eq!(
-        keys::load(&paths, SystemKind::Gb).expect("the Game Boy file parses"),
+        keys::load(&paths, SystemKind::Gb)
+            .expect("the Game Boy file parses")
+            .map,
         gb
     );
     assert_eq!(
-        keys::load(&paths, SystemKind::Snes).expect("the Super NES file parses"),
+        keys::load(&paths, SystemKind::Snes)
+            .expect("the Super NES file parses")
+            .map,
         snes
     );
 }
@@ -282,28 +285,93 @@ fn gamepad_merges_with_keys() {
 }
 
 #[test]
-fn a_game_button_wins_a_key_the_window_also_uses() {
-    let scratch = Scratch::new("shared-key");
+fn rebind_refuses_every_app_key() {
+    let scratch = Scratch::new("app-keys");
     let rom = scratch.rom("Kwirk.gb", &gb_rom());
     let mut app = App::new(scratch.paths());
     app.open(&rom).expect("the built cartridge opens");
-
-    assert!(!keys::claimed(&app, "F5"), "F5 is nobody's button at first");
     let a = row_index(&app, "A");
-    assert!(keys::on_row(&mut app, a, RowAct::Key("F5".to_string())));
-    assert_eq!(value(&app, "A"), "F5");
-    assert!(keys::claimed(&app, "F5"), "the button has the key");
-    assert!(!app.hotkey("F5"), "so F5 saves nothing");
-    assert!(
-        !states::state_path(&scratch.paths(), SystemKind::Gb, &rom, 1).exists(),
-        "no state file was written"
-    );
+    let default = value(&app, "A");
+    let file = scratch.paths().keys_file(SystemKind::Gb);
 
-    // Escape is a window key too: once A holds it, closing the drawer belongs to A.
-    assert!(keys::on_row(&mut app, a, RowAct::Key("Escape".to_string())));
-    assert_eq!(value(&app, "A"), "Escape");
-    assert!(keys::claimed(&app, "Escape"));
-    assert!(!keys::claimed(&app, "Tab"), "Tab is still the window's");
+    for &(key, what) in keys::RESERVED {
+        assert!(keys::on_row(&mut app, a, RowAct::Key(key.to_string())));
+        assert_eq!(value(&app, "A"), default, "{key} did not reach the button");
+        let notice = app.notice().expect("a refusal notice").text.clone();
+        assert!(notice.contains(key), "the notice names {key}: {notice}");
+        assert!(
+            notice.contains(what),
+            "the notice says what {key} does: {notice}"
+        );
+        assert!(!file.exists(), "{key} was not written to the keys file");
+    }
+    assert!(!keys::claimed(&app, "F5"), "F5 is still the window's");
+
+    // F4 and Backspace are not the app's, so they bind; Backspace stays Select on these layouts.
+    for key in ["F4", "Backspace"] {
+        assert!(keys::on_row(&mut app, a, RowAct::Key(key.to_string())));
+        assert_eq!(value(&app, "A"), key, "{key} still binds");
+    }
+    let written = fs::read_to_string(&file).expect("the file was written");
+    assert!(written.contains("a = Backspace"), "{written}");
+}
+
+#[test]
+fn a_keys_file_naming_an_app_key_gets_the_default_and_one_notice() {
+    let scratch = Scratch::new("file-app-key");
+    let paths = scratch.paths();
+    let file = paths.keys_file(SystemKind::Gb);
+    fs::create_dir_all(file.parent().expect("the system folder")).expect("the folder is writable");
+    fs::write(&file, "a = M\nb = K\n").expect("the keys file is writable");
+
+    let loaded = keys::load(&paths, SystemKind::Gb).expect("the file parses");
+    assert_eq!(
+        loaded.map.get(Buttons::A),
+        Keymap::builtin(SystemKind::Gb).get(Buttons::A),
+        "A keeps its built-in key"
+    );
+    assert_eq!(
+        loaded.map.get(Buttons::B),
+        "K",
+        "the other line still applies"
+    );
+    let notice = loaded.notice.expect("one notice names the ignored line");
+    assert!(notice.contains("a = M"), "{notice}");
+    assert!(notice.contains("opens the drawer"), "{notice}");
+
+    // The app's own path: opening the game reads the file and puts that one line up once.
+    let mut app = App::new(paths.clone());
+    app.open_bytes("one.gb", gb_rom(), None)
+        .expect("the Game Boy cart opens");
+    assert_eq!(value(&app, "A"), "Z", "the row shows the built-in key");
+    keys::on_frame(&mut app);
+    let shown = app.notice().expect("the bar says why").text.clone();
+    assert!(shown.contains("a = M"), "{shown}");
+    app.dismiss_notice();
+    keys::on_frame(&mut app);
+    assert!(
+        app.notice().is_none(),
+        "the notice is put up once, not every frame"
+    );
+}
+
+#[test]
+fn no_default_layout_uses_an_app_key() {
+    for system in SystemKind::ALL {
+        let map = Keymap::builtin(system);
+        for (button, label) in Buttons::ALL {
+            let key = map.get(button);
+            assert!(
+                keys::reserved(key).is_none(),
+                "{} binds {key} to {label}",
+                system.key()
+            );
+        }
+    }
+    assert!(
+        keys::reserved("Backspace").is_none(),
+        "Backspace is Select on three layouts, not an app key"
+    );
 }
 
 #[test]
