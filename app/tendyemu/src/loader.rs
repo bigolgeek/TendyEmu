@@ -3,29 +3,44 @@
 //! `tendy_detect` says which system a file is; this maps that answer onto each core's constructor.
 //! Every refusal keeps the core's own words, prefixed so the whole app has one refusal line.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tendy_core::{Machine, SystemKind};
 use tendy_detect::{Detected, Entry, Format};
 
-/// Builds the core `detected` names from the bytes `entry` carries.
-pub fn build(entry: &Entry, detected: &Detected) -> Result<Box<dyn Machine>, String> {
-    build_with_rom(entry, detected, None)
+/// Where the bytes came from: the file the user opened, and the FDS BIOS the settings name.
+/// A test, or an entry no file stands behind, passes neither.
+///
+/// `rom` is the file the entry was read from (an archive included), so the soft patch beside it
+/// (SPEC §3, #30) and the FDS BIOS search both have a folder to look in. `fds_bios` is the path
+/// the `[nes] fds_bios` setting holds, empty or `None` when the user has not chosen one.
+#[derive(Clone, Copy, Default)]
+pub struct Sources<'a> {
+    pub rom: Option<&'a Path>,
+    pub fds_bios: Option<&'a Path>,
 }
 
-/// `build`, after applying the soft patch that sits next to `rom` (SPEC §3, #30): the
+/// The one line every FDS BIOS refusal ends with: the setting to fix and where it lives.
+const FDS_BIOS_SETTING: &str = "set \"FDS BIOS\" in Main menu > Emulation";
+
+/// Builds the core `detected` names from the bytes `entry` carries.
+pub fn build(entry: &Entry, detected: &Detected) -> Result<Box<dyn Machine>, String> {
+    build_with(entry, detected, Sources::default())
+}
+
+/// `build`, after applying the soft patch that sits next to `sources.rom` (SPEC §3, #30): the
 /// `<stem>.ips`, `.bps` or `.ups` beside the file the user opened is applied before anything
 /// parses the bytes, so the header and the game database see the patched image. An archive
 /// entry, or a test with no file, has no patch beside it and is built as it came.
 ///
 /// A patch that exists but cannot be applied refuses the open with its own reason: running the
 /// unpatched ROM would silently hide a wrong revision or a corrupted download.
-pub fn build_with_rom(
+pub fn build_with(
     entry: &Entry,
     detected: &Detected,
-    rom: Option<&Path>,
+    sources: Sources<'_>,
 ) -> Result<Box<dyn Machine>, String> {
-    let rom = patched_bytes(entry, rom)?;
+    let rom = patched_bytes(entry, sources.rom)?;
     let machine: Box<dyn Machine> = match detected.system {
         SystemKind::Gb => Box::new(
             tendy_gb::GbMachine::new(
@@ -49,11 +64,17 @@ pub fn build_with_rom(
                 // cartridge and the core refuses it if it is not.
                 _ => tendy_nes::NesImage::Cartridge,
             };
+            // A disk boots in the FDS BIOS, so it needs one before the core is built; a
+            // cartridge or an NSF carries everything it needs.
+            let bios = match image {
+                tendy_nes::NesImage::Disk { .. } => Some(fds_bios(sources.fds_bios, sources.rom)?),
+                _ => None,
+            };
             Box::new(
                 tendy_nes::NesMachine::new(
                     rom,
                     image,
-                    None,
+                    bios,
                     tendy_nes::console::ConsoleConfig::default(),
                 )
                 .map_err(refused)?,
@@ -85,6 +106,54 @@ fn refused(why: String) -> String {
     } else {
         format!("refused: {why}")
     }
+}
+
+/// The FDS BIOS bytes for a disk image: the file the `[nes] fds_bios` setting names, else the
+/// `disksys.rom` dump the old NES app looked for beside the image and in a `roms/` folder there.
+/// A disk the user supplied no BIOS for refuses in one line that names the setting: without one
+/// the disk cannot boot at all, so running it half-loaded would only hide the real problem.
+fn fds_bios(setting: Option<&Path>, rom: Option<&Path>) -> Result<Vec<u8>, String> {
+    let named = setting.filter(|path| !path.as_os_str().is_empty());
+    let candidates: Vec<PathBuf> = match named {
+        Some(path) => vec![path.to_path_buf()],
+        None => rom.map(search_beside).unwrap_or_default(),
+    };
+    let needed = tendy_nes::mapper::fds::BIOS_LEN;
+    for path in &candidates {
+        match std::fs::read(path) {
+            Ok(bytes) if bytes.len() >= needed => return Ok(bytes),
+            Ok(bytes) => {
+                return Err(refused(format!(
+                    "the FDS BIOS {} is {} bytes, not {needed} — {FDS_BIOS_SETTING}",
+                    path.display(),
+                    bytes.len()
+                )));
+            }
+            // A search candidate that is not there is the next candidate's business; a file the
+            // setting names is the user's answer, so a missing one is a refusal.
+            Err(why) if named.is_none() && why.kind() == std::io::ErrorKind::NotFound => {}
+            Err(why) => {
+                return Err(refused(format!(
+                    "cannot read the FDS BIOS {}: {why} — {FDS_BIOS_SETTING}",
+                    path.display()
+                )));
+            }
+        }
+    }
+    Err(refused(format!(
+        "an FDS disk needs the FDS BIOS — {FDS_BIOS_SETTING}"
+    )))
+}
+
+/// Where the old NES app looked beside the image: its own folder, then a `roms/` folder there.
+fn search_beside(rom: &Path) -> Vec<PathBuf> {
+    let Some(dir) = rom.parent() else {
+        return Vec::new();
+    };
+    vec![
+        dir.join("disksys.rom"),
+        dir.join("roms").join("disksys.rom"),
+    ]
 }
 
 #[cfg(test)]
@@ -137,6 +206,117 @@ mod tests {
         dir
     }
 
+    /// An 8 KB FDS BIOS: `LDA #$00` at $E000 and a reset vector to it, so the disk boots.
+    fn fds_bios() -> Vec<u8> {
+        let mut bios = vec![0u8; tendy_nes::mapper::fds::BIOS_LEN];
+        bios[0] = 0xA9;
+        bios[0x1FFC] = 0x00;
+        bios[0x1FFD] = 0xE0;
+        bios
+    }
+
+    /// One side of a disk image with a plausible block structure: disk info, file count, one file
+    /// header and four bytes of file data.
+    fn fds_image() -> Vec<u8> {
+        let mut side = vec![0u8; tendy_nes::mapper::fds::SIDE_LEN];
+        side[0] = 0x01;
+        side[1..15].copy_from_slice(b"*NINTENDO-HVC*");
+        side[0x38] = 0x02;
+        side[0x39] = 1;
+        side[0x3A] = 0x03;
+        side[0x3A + 0x0B] = 0x00;
+        side[0x3A + 0x0C] = 0x60;
+        side[0x3A + 0x0D] = 0x04;
+        side[0x4A] = 0x04;
+        side[0x4B..0x4F].copy_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
+        let mut disk = Vec::from(tendy_nes::mapper::fds::FDS_MAGIC);
+        disk.push(1);
+        disk.extend_from_slice(&[0u8; 11]);
+        disk.extend_from_slice(&side);
+        disk
+    }
+
+    /// Builds the image as a disk behind `sources`, or the refusal text.
+    fn build_disk(sources: Sources<'_>) -> Result<Box<dyn Machine>, String> {
+        let (entry, detected) =
+            tendy_detect::open("game.fds", fds_image()).expect("a .fds image detects");
+        build_with(&entry, &detected, sources)
+    }
+
+    #[test]
+    fn a_disk_boots_on_its_first_side_when_the_settings_name_a_bios() {
+        let dir = scratch("fds-bios");
+        let bios = dir.join("disksys.rom");
+        std::fs::write(&bios, fds_bios()).expect("the BIOS is written");
+        let machine = build_disk(Sources {
+            fds_bios: Some(&bios),
+            ..Sources::default()
+        })
+        .expect("the disk opens");
+        assert_eq!(machine.kind(), SystemKind::Nes);
+        assert_eq!(machine.cart_storage(), "FDS disk");
+        assert_eq!(machine.disk_side(), Some((0, 1)), "side A is mounted");
+        assert!(
+            machine.capabilities().has(tendy_core::Capability::DiskSwap),
+            "a disk reports disk swap"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_disk_without_a_bios_refuses_in_one_line_naming_the_setting() {
+        let why = match build_disk(Sources::default()) {
+            Ok(_) => panic!("a disk with no BIOS must be refused"),
+            Err(why) => why,
+        };
+        assert!(why.starts_with("refused: "), "{why}");
+        assert!(why.contains("FDS BIOS"), "{why}");
+        assert!(why.contains("Emulation"), "the line says where: {why}");
+        assert!(!why.contains('\n'), "one line: {why}");
+    }
+
+    #[test]
+    fn a_short_bios_is_refused_rather_than_mounted() {
+        let dir = scratch("fds-short");
+        let bios = dir.join("short.bin");
+        std::fs::write(&bios, [0u8; 100]).expect("the short BIOS is written");
+        let why = match build_disk(Sources {
+            fds_bios: Some(&bios),
+            ..Sources::default()
+        }) {
+            Ok(_) => panic!("a short BIOS must be refused"),
+            Err(why) => why,
+        };
+        assert!(why.contains("is 100 bytes"), "{why}");
+        assert!(why.contains("FDS BIOS"), "{why}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_disksys_rom_beside_the_image_is_found_when_the_setting_is_empty() {
+        let dir = scratch("fds-beside");
+        let disk = dir.join("game.fds");
+        std::fs::write(&disk, fds_image()).expect("the disk is written");
+        // An empty setting is "not chosen", not a path.
+        let empty = Path::new("");
+        assert!(
+            build_disk(Sources {
+                rom: Some(&disk),
+                fds_bios: Some(empty),
+            })
+            .is_err(),
+            "an empty setting falls back to the search, and finds nothing yet"
+        );
+        std::fs::write(dir.join("disksys.rom"), fds_bios()).expect("the BIOS is written");
+        let machine = build_disk(Sources {
+            rom: Some(&disk),
+            fds_bios: Some(empty),
+        })
+        .expect("the BIOS beside the image is found");
+        assert_eq!(machine.disk_side(), Some((0, 1)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn a_rom_image_becomes_a_machine() {
         let bytes = gb_rom();
@@ -168,7 +348,17 @@ mod tests {
         // unlicensed board is picked ahead of the type byte), and `$0147` sets a type no mapper
         // answers. Only an applied patch can make the core refuse, so the refusal proves the
         // core saw the patched bytes.
-        assert!(build_with_rom(&entry, &detected, Some(&path)).is_ok());
+        assert!(
+            build_with(
+                &entry,
+                &detected,
+                Sources {
+                    rom: Some(&path),
+                    ..Sources::default()
+                },
+            )
+            .is_ok()
+        );
         std::fs::write(
             path.with_extension("ips"),
             ips(&[ips_record(0x0101, &[0x00]), ips_record(0x0147, &[0x04])]),
@@ -179,7 +369,14 @@ mod tests {
             patched[0x0147], 0x04,
             "the patched byte reached the build input"
         );
-        let why = match build_with_rom(&entry, &detected, Some(&path)) {
+        let why = match build_with(
+            &entry,
+            &detected,
+            Sources {
+                rom: Some(&path),
+                ..Sources::default()
+            },
+        ) {
             Ok(_) => panic!("the patched ROM must be refused"),
             Err(why) => why,
         };
@@ -196,7 +393,14 @@ mod tests {
         // A corrupt BPS file: its own CRC no longer matches.
         std::fs::write(path.with_extension("bps"), b"BPS1garbage").expect("the patch is written");
         let (entry, detected) = tendy_detect::open("hack.gb", gb_rom()).expect("a GB cart detects");
-        let why = match build_with_rom(&entry, &detected, Some(&path)) {
+        let why = match build_with(
+            &entry,
+            &detected,
+            Sources {
+                rom: Some(&path),
+                ..Sources::default()
+            },
+        ) {
             Ok(_) => panic!("a corrupted patch must refuse the open"),
             Err(why) => why,
         };

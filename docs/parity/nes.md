@@ -136,7 +136,8 @@ full, including the settings that only appeared in its config file.
 |---|---|---|
 | Battery save in the game's folder | yes | `Main menu > Open ROM...`; written while playing and on quit, adopted from beside the ROM |
 | AVI recording with sound | yes | `Video > Start AVI recording` |
-| FDS games: BIOS choice, loading, side swap | gap | the BIOS row stores a path but no BIOS reaches the core, so every .fds and .qd image is refused at open; the old F8 side key is rewind now |
+| FDS games: BIOS choice and loading | yes | `Emulation > FDS BIOS`; a .fds, a .qd, or a zip holding one opens on side A, and a disk with no BIOS refuses in one line that names the row. A disksys.rom beside the image is used when the row is empty |
+| FDS side swap | gap | the disk mounts on side A and stays there; the old F8 side key is rewind now |
 | IPS and BPS soft patches | gap | a later lane of this milestone adds them |
 | NSF playback | yes | `file:nsf`; bare or inside an archive |
 | NSF title screen, song list and starting song flag | gap | the tune plays with no title, no Up and Down song keys and no --song |
