@@ -407,6 +407,7 @@ pub fn rows(app: &App) -> Vec<Row> {
                 kind,
                 desc,
                 hotkey: "",
+                systems: crate::menu::Systems::ALL,
                 requires: None,
                 act: None,
             }

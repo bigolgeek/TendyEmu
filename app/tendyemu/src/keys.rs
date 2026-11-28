@@ -431,6 +431,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             kind: RowKind::Rebind,
             desc: "Enter, then press the new key",
             hotkey: "Enter",
+            systems: crate::menu::Systems::ALL,
             requires: None,
             act: None,
         });
@@ -441,6 +442,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         kind: RowKind::Pick,
         desc: "Read a `button = key` file for this system",
         hotkey: "Enter",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     });

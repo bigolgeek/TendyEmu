@@ -196,6 +196,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             kind: RowKind::Choice,
             desc: "The slot Save state and Load state use",
             hotkey: "",
+            systems: crate::menu::Systems::ALL,
             requires: None,
             act: None,
         });
@@ -206,6 +207,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         kind: RowKind::Action,
         desc: "Write the state and its picture to this slot",
         hotkey: "F5",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     });
@@ -216,6 +218,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         kind: RowKind::Action,
         desc: "Return to the state in this slot",
         hotkey: "F7",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     });
