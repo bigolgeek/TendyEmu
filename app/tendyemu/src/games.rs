@@ -240,6 +240,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             kind,
             desc: "An override of the Display page's value; (inherit) follows it",
             hotkey: "",
+            systems: crate::menu::Systems::ALL,
             requires: None,
             act: None,
         });
@@ -251,6 +252,7 @@ pub fn rows(app: &App) -> Vec<Row> {
             kind: RowKind::Action,
             desc: "Back to the system's values",
             hotkey: "",
+            systems: crate::menu::Systems::ALL,
             requires: None,
             act: None,
         });

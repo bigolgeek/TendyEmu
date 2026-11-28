@@ -339,6 +339,7 @@ fn row(
         kind,
         desc,
         hotkey: "",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     }

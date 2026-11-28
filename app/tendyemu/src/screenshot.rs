@@ -180,6 +180,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         kind: RowKind::Action,
         desc: "Write the picture as a PNG",
         hotkey: "",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     }]

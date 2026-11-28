@@ -3,7 +3,9 @@
 //! The drawer never touches the machine, a dialog or the process. It records a [`Request`] and the
 //! app performs it, which is what makes every interaction testable without a window. Rows come
 //! from the modules (§6.1): [`Rows::collect`] asks each one once a frame, in a fixed order, and
-//! filters the result through the running game's capabilities ([`crate::caps`]).
+//! keeps only the rows for the running system whose capability the game reports ([`crate::caps`]).
+
+use tendy_core::{Capabilities, SystemKind};
 
 use crate::app::App;
 use crate::caps::{self, RowGate};
@@ -146,6 +148,47 @@ pub enum RowKind {
     Info,
 }
 
+/// The systems a drawer row belongs to (DESIGN §6.1). A shared row is [`Systems::ALL`]: it shows
+/// whenever its capability gate allows, whether or not a game is open. A row for one console or
+/// some of them shows only while one of those runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Systems(u8);
+
+impl Systems {
+    /// Every system: the row is shared. No other system is added without changing this.
+    pub const ALL: Systems = Systems((1 << SystemKind::ALL.len()) - 1);
+
+    /// One system only.
+    pub const fn only(system: SystemKind) -> Systems {
+        Systems(bit(system))
+    }
+
+    /// This set plus one more system.
+    pub const fn with(self, system: SystemKind) -> Systems {
+        Systems(self.0 | bit(system))
+    }
+
+    /// Whether the set names `system`.
+    pub const fn has(self, system: SystemKind) -> bool {
+        self.0 & bit(system) != 0
+    }
+
+    /// Whether the row is shared by every system.
+    pub const fn all(self) -> bool {
+        self.0 == Systems::ALL.0
+    }
+}
+
+/// The set's bit for one system.
+const fn bit(system: SystemKind) -> u8 {
+    match system {
+        SystemKind::Gb => 1 << 0,
+        SystemKind::Gba => 1 << 1,
+        SystemKind::Nes => 1 << 2,
+        SystemKind::Snes => 1 << 3,
+    }
+}
+
 /// One row of the drawer, as the module that owns it describes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Row {
@@ -155,6 +198,8 @@ pub struct Row {
     pub kind: RowKind,
     pub desc: &'static str,
     pub hotkey: &'static str,
+    /// The systems the row belongs to. [`Systems::ALL`] for a shared row.
+    pub systems: Systems,
     /// The capability the running game must report for the row to be drawn.
     pub requires: Option<tendy_core::Capability>,
     /// What the drawer itself does with the row. `None` for a module's row: it goes to the owner.
@@ -175,6 +220,7 @@ impl Row {
             kind: RowKind::Action,
             desc,
             hotkey,
+            systems: Systems::ALL,
             requires: None,
             act: Some(request),
         }
@@ -188,9 +234,22 @@ impl Row {
             kind: RowKind::Info,
             desc,
             hotkey: "",
+            systems: Systems::ALL,
             requires: None,
             act: None,
         }
+    }
+
+    /// The same row, shown only while `system` runs. A row without this is shared by every system.
+    pub fn only_on(mut self, system: SystemKind) -> Row {
+        self.systems = Systems::only(system);
+        self
+    }
+
+    /// Whether the drawer shows this row for `system`. A shared row always shows; a tagged row
+    /// needs its system to be the running one, so it stays hidden with no game open.
+    pub fn shown_for(&self, system: Option<SystemKind>) -> bool {
+        self.systems.all() || system.is_some_and(|system| self.systems.has(system))
     }
 
     /// The same row gated on a capability.
@@ -305,36 +364,41 @@ pub struct Rows {
 }
 
 impl Rows {
-    /// Asks every module once, in [`Module::ROW_ORDER`], and drops the rows the game cannot use.
+    /// Asks every module once, in [`Module::ROW_ORDER`], and drops the rows this game cannot use:
+    /// another system's rows, and rows whose capability the core does not report.
     pub fn collect(app: &App) -> Rows {
-        let capabilities = app.capabilities();
-        let mut groups = Vec::new();
+        let mut rows = Rows::default();
         for level in Level::ALL {
-            groups.push(RowGroup {
+            rows.groups.push(RowGroup {
                 module: Module::Menu,
                 level,
                 rows: own_rows(app, level),
             });
         }
         for module in Module::ROW_ORDER {
-            let rows = module_rows(app, module)
-                .into_iter()
-                .filter(|row| {
-                    caps::visible(
+            rows.groups.push(RowGroup {
+                module,
+                level: module.level(),
+                rows: module_rows(app, module),
+            });
+        }
+        rows.keep(app.system(), app.capabilities());
+        rows
+    }
+
+    /// Keeps the rows that belong to `system` and whose capability gate the game meets.
+    fn keep(&mut self, system: Option<SystemKind>, capabilities: Capabilities) {
+        for group in &mut self.groups {
+            group.rows.retain(|row| {
+                row.shown_for(system)
+                    && caps::visible(
                         &RowGate {
                             requires: row.requires,
                         },
                         capabilities,
                     )
-                })
-                .collect();
-            groups.push(RowGroup {
-                module,
-                level: module.level(),
-                rows,
             });
         }
-        Rows { groups }
     }
 
     /// The rows of one module.
@@ -1270,6 +1334,57 @@ mod tests {
         assert_eq!(drawer_width(1024.0), 320.0);
         assert!(is_compact(400.0));
         assert!(!is_compact(800.0));
+    }
+
+    #[test]
+    fn a_row_for_one_system_is_absent_on_another() {
+        let mut rows = Rows::default();
+        rows.groups.push(RowGroup {
+            module: Module::Rewind,
+            level: Level::Game,
+            rows: vec![
+                Row::info("Palette", "Green", "The shades a Game Boy uses").only_on(SystemKind::Gb),
+                Row::info("Speed", "1x", "How fast the emulated game runs"),
+            ],
+        });
+        let mut menu = Menu::new();
+
+        let mut on_snes = rows.clone();
+        on_snes.keep(Some(SystemKind::Snes), Capabilities::NONE);
+        menu.set_rows(on_snes);
+        menu.set_level(Level::Game);
+        let shown = labels(&menu);
+        assert!(shown.contains(&"Speed".to_string()), "{shown:?}");
+        assert!(
+            !shown.contains(&"Palette".to_string()),
+            "a Game Boy row on a Super NES run: {shown:?}"
+        );
+
+        let mut on_gb = rows.clone();
+        on_gb.keep(Some(SystemKind::Gb), Capabilities::NONE);
+        menu.set_rows(on_gb);
+        let shown = labels(&menu);
+        assert!(shown.contains(&"Palette".to_string()), "{shown:?}");
+
+        rows.keep(None, Capabilities::NONE);
+        menu.set_rows(rows);
+        let shown = labels(&menu);
+        assert!(shown.contains(&"Speed".to_string()), "{shown:?}");
+        assert!(
+            !shown.contains(&"Palette".to_string()),
+            "a tagged row with no game open: {shown:?}"
+        );
+    }
+
+    /// Every row's label on the drawer's current page.
+    fn labels(menu: &Menu) -> Vec<String> {
+        menu.entries()
+            .iter()
+            .filter_map(|entry| match entry {
+                Entry::Item(item) => Some(item.row.label.clone()),
+                _ => None,
+            })
+            .collect()
     }
 
     #[test]

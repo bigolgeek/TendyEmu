@@ -202,6 +202,7 @@ pub fn rows(app: &App) -> Vec<DrawerRow> {
             kind: kind(*row),
             desc: desc(*row),
             hotkey: "",
+            systems: crate::menu::Systems::ALL,
             requires: None,
             act: None,
         })

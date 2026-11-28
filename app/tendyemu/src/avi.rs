@@ -690,6 +690,7 @@ pub fn rows(app: &App) -> Vec<Row> {
         kind: RowKind::Action,
         desc: "Uncompressed AVI with sound, up to one gigabyte",
         hotkey: "",
+        systems: crate::menu::Systems::ALL,
         requires: None,
         act: None,
     }]
