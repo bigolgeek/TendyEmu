@@ -1,0 +1,55 @@
+# Front-end tests of the Super NES app that this tree does not carry.
+#
+# One line each: <source test file>::<test> — <what carries the claim now>.
+# "replaced by" names a test in this tree; "ported" names the test this tree gained for it;
+# "dropped" means the behaviour itself is gone, with
+# the reason (and, where it is a loss, the parity row in docs/parity/snes.md that records it).
+# The source is the app's final commit (DESIGN §5.5, §8 #27).
+
+tests/audio_stats.rs::the_channels_are_measured_separately — dropped: the --audio-stats printer was not ported (its successor is #28's checksum sweep); channel muting is crates/tendy-snes/tests/apu.rs::channel_mask_silences_one_voice
+tests/audio_stats.rs::a_silent_mix_is_measured_as_silent_not_as_minus_one — dropped: the --audio-stats printer was not ported
+tests/audio_stats.rs::the_rail_is_the_16_bit_one — dropped: the --audio-stats printer was not ported
+tests/audio_stats.rs::a_total_carries_the_peak_and_the_counts — dropped: the --audio-stats printer was not ported
+
+tests/audio_path.rs::a_machine_a_few_percent_slow_does_not_make_the_card_drop_samples — replaced by tests/audio.rs::no_underrun_at_normal_speed_each_system
+tests/audio_path.rs::a_pause_is_silence_and_the_resume_does_not_drop_a_sample — replaced by tests/audio.rs::a_starved_ring_plays_silence
+tests/audio_path.rs::the_resampler_interpolates_across_a_batch_boundary — replaced by src/audio.rs::a_sinc_converter_keeps_the_pitch_at_every_core_rate
+
+tests/config.rs::defaults_round_trip — replaced by src/config.rs::a_round_trip_is_equal
+tests/config.rs::unknown_key_is_a_notice — replaced by src/config.rs::an_unknown_key_is_a_notice_and_keeps_the_defaults
+tests/config.rs::missing_key_uses_default — replaced by tests/settings.rs::missing_key_is_default
+tests/config.rs::scale_is_clamped — ported: tests/snes_front.rs::scale_is_clamped
+tests/config.rs::volume_and_channels_parse — replaced by src/audio.rs::the_volume_curve_squares_the_slider for volume; the channel-mask keys are a parity gap (docs/parity/snes.md, Audio)
+tests/config.rs::keys_file_round_trips — replaced by src/keys.rs::a_written_file_reads_back_as_the_same_keymap
+
+tests/display.rs::window_size_at_each_scale — replaced by src/display.rs::the_window_is_the_picture_at_the_scale_plus_the_bar
+tests/display.rs::integer_scale_factor_is_whole — replaced by src/display.rs::the_fit_is_the_largest_multiple_that_fits_and_never_zero
+tests/display.rs::picture_pixel_maps_corners — dropped: the shared shell has no mouse-to-picture map (the NES pointer is #26's)
+tests/display.rs::picture_area_excludes_bar — replaced by src/display.rs::the_window_is_the_picture_at_the_scale_plus_the_bar
+tests/display.rs::stretched_rect_fills_the_picture_area — replaced by src/display.rs::a_stretched_picture_fills_the_area
+
+tests/front_end.rs::the_trait_is_all_the_loop_needs — dropped: the System trait and launch::run_frames are gone; the loop drives Machine through App::tick and #28's headless runner carries the equivalent claim
+tests/front_end.rs::the_bar_fps_is_the_machine_rate_not_the_draw_rate — replaced by src/app.rs::the_fps_reading_is_a_window_not_one_tick
+tests/front_end.rs::picture_path_expands_bgr555 — replaced by crates/tendy-snes/tests/machine.rs::snes_frame_rgba_complete
+
+tests/launch.rs::parses_frames_and_scale — dropped: the window binary parses only the ROM path (the path half is tests/shell.rs::open_each_system_by_argument; --frames is #28's and --scale is a parity gap)
+tests/launch.rs::zip_extraction_picks_the_single_entry — replaced by crates/tendy-detect/tests/archive.rs::zip_first_known_extension_wins
+tests/launch.rs::unreadable_file_is_refused_by_name — replaced by tests/shell.rs::refusal_shows_detect_text
+tests/launch.rs::sevenz_extraction_picks_the_single_entry — replaced by crates/tendy-detect/tests/archive.rs::sevenz_first_known_extension_wins
+tests/launch.rs::screenshot_is_256_by_224 — replaced by tests/capture.rs::screenshot_native_size_each_system
+
+tests/menu.rs::top_level_rows — replaced by tests/snes_parity.rs::snes_parity_rows_reachable (the drawer's main-menu row pins the order)
+tests/menu.rs::every_row_has_a_description — replaced by tests/snes_parity.rs::snes_parity_rows_reachable (the all-rows check)
+tests/menu.rs::counter_counts_selectable_items — dropped: the merged drawer draws no counter; docs/parity/snes.md records it as a gap
+tests/menu.rs::wrap_moves_first_to_last — replaced by src/menu.rs::moving_wraps_at_both_ends
+tests/menu.rs::visible_window_contains_cursor — replaced by src/menu.rs::the_cursor_stays_inside_the_viewport
+tests/menu.rs::esc_goes_up_then_closes — replaced by src/menu.rs::a_section_row_opens_and_escape_goes_back_up
+tests/menu.rs::rebind_swaps_duplicate_key — replaced by src/keys.rs::a_rebind_swaps_the_previous_holder
+tests/menu.rs::drawer_width_per_window_width — replaced by src/menu.rs::the_drawer_width_follows_the_window
+
+tests/save.rs::ram_round_trip — ported: tests/snes_front.rs::ram_round_trip
+tests/save.rs::short_file_loads_into_the_front — ported: tests/snes_front.rs::short_file_loads_into_the_front
+tests/save.rs::long_file_is_truncated — ported: tests/snes_front.rs::long_file_is_truncated
+tests/save.rs::path_is_beside_the_cartridge — replaced by src/battery.rs::a_save_lands_in_the_system_folder_under_the_rom_s_stem (SPEC §7 moved saves into per-system folders)
+tests/save.rs::atomic_write_leaves_no_temp_file — replaced by src/battery.rs::a_write_leaves_no_temporary_file_behind
+tests/save.rs::a_held_target_costs_a_retry_not_the_save — dropped: battery::write_atomic has no retry; docs/parity/snes.md records it as a gap
