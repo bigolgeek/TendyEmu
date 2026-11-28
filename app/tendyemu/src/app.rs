@@ -482,8 +482,9 @@ impl App {
         if self.menu.is_open() {
             self.refresh();
         }
-        // Backspace held: restore the newest snapshot instead of running a frame (#77). The
-        // pacer waits, so releasing the key does not repay the frames spent held.
+        // A rewind key held — F8, or Backspace where no game button has it (#78): restore the
+        // newest snapshot instead of running a frame (#77). The pacer waits, so releasing the
+        // key does not repay the frames spent held.
         if self.rewinding && !self.menu.is_open() && rewind::enabled() {
             self.pacer.reset();
             self.clear_fps();

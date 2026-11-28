@@ -13,6 +13,7 @@ use tendyemu::gamepad;
 use tendyemu::keys::{self, Keymap};
 use tendyemu::menu::RowAct;
 use tendyemu::paths::Paths;
+use tendyemu::rewind;
 use tendyemu::states;
 
 /// A scratch config folder, removed when the test ends.
@@ -60,6 +61,21 @@ fn gb_rom() -> Vec<u8> {
         sum = sum.wrapping_sub(*byte).wrapping_sub(1);
     }
     rom[0x14D] = sum;
+    rom
+}
+
+/// A 32 KiB Game Boy Advance cartridge: an ARM branch at $08000000 and a sound header.
+fn gba_rom() -> Vec<u8> {
+    let mut rom = vec![0u8; 0x8000];
+    // `b $080000C0`: the offset is (0xC0 - 8) / 4 = 0x2E.
+    rom[0..4].copy_from_slice(&0xEA00_002Eu32.to_le_bytes());
+    rom[0xA0..0xA8].copy_from_slice(b"INPUTGBA");
+    rom[0xB2] = 0x96;
+    let mut x: u8 = 0;
+    for byte in &rom[0xA0..=0xBC] {
+        x = x.wrapping_sub(*byte);
+    }
+    rom[0xBD] = x.wrapping_sub(0x19);
     rom
 }
 
@@ -288,4 +304,49 @@ fn a_game_button_wins_a_key_the_window_also_uses() {
     assert_eq!(value(&app, "A"), "Escape");
     assert!(keys::claimed(&app, "Escape"));
     assert!(!keys::claimed(&app, "Tab"), "Tab is still the window's");
+}
+
+#[test]
+fn f8_rewinds_on_every_default_layout() {
+    let scratch = Scratch::new("rewind-key");
+    let mut app = App::new(scratch.paths());
+    for (system, name, bytes) in [
+        (SystemKind::Gb, "rewind.gb", gb_rom()),
+        (SystemKind::Gba, "rewind.gba", gba_rom()),
+        (SystemKind::Nes, "rewind.nes", nes_rom()),
+        (SystemKind::Snes, "rewind.sfc", snes_rom()),
+    ] {
+        app.open_bytes(name, bytes, None)
+            .unwrap_or_else(|why| panic!("{name} opens: {why}"));
+        assert_eq!(app.system(), Some(system), "{name}");
+
+        // F8 is nobody's game button on any shipped layout, so it always reaches rewind (#78).
+        assert!(!keys::claimed(&app, "F8"), "{} binds F8", system.key());
+        let hotkeys = rewind::hotkeys(&app);
+        assert!(
+            hotkeys.contains(&"F8"),
+            "{} rewinds on F8: {hotkeys:?}",
+            system.key()
+        );
+
+        // Backspace rewinds exactly where no button holds it: the Game Boy, Advance and Super NES
+        // layouts bind it to Select; only the NES leaves it free.
+        let backspace = system != SystemKind::Nes;
+        assert_eq!(
+            keys::claimed(&app, "Backspace"),
+            backspace,
+            "{} and Backspace",
+            system.key()
+        );
+        assert_eq!(hotkeys.contains(&"Backspace"), !backspace, "{hotkeys:?}");
+
+        // The Rewind row names the keys that actually work on this system.
+        let label = &rewind::rows(&app)[0].label;
+        let expected = if backspace {
+            "Rewind (hold F8)"
+        } else {
+            "Rewind (hold F8 or Backspace)"
+        };
+        assert_eq!(label, expected, "{} labels its rewind keys", system.key());
+    }
 }
