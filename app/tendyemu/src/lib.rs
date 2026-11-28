@@ -13,6 +13,7 @@ pub mod file_pick;
 pub mod first_run;
 pub mod gamepad;
 pub mod games;
+pub mod headless;
 pub mod keys;
 pub mod loader;
 pub mod menu;
