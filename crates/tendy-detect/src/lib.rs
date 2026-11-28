@@ -2,6 +2,7 @@
 
 pub mod archive;
 pub mod extension;
+pub mod patch;
 pub mod signature;
 
 pub use archive::{ArchiveKind, Entry, open};
