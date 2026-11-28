@@ -9,6 +9,12 @@
 //! `main.rs` asks [`held_names`] which host keys are down; [`on_frame`] turns the names the app
 //! holds into the logical pad. A rebind row takes the next key pressed while the drawer is open
 //! ([`rows`], [`on_row`]), and writes the system's file at once.
+//!
+//! The window's own keys are reserved ([`RESERVED`], issue #79): a game button may not hold one,
+//! so the menu, pause, speed, states, rewind and fast-forward can never be locked out. A rebind
+//! refuses one with a one-line notice, and a keys file that names one has that line ignored so the
+//! button keeps its built-in key. `Backspace` is not reserved: it is Select on three systems'
+//! layouts, and rewind holds it only where no button does (#78).
 
 use std::fs;
 use std::path::PathBuf;
@@ -97,6 +103,34 @@ pub const KEY_NAMES: &[Key] = &[
     "F12",
 ];
 
+/// The keys the window uses for itself (#79). A game button may not hold one: the app keeps the
+/// key, so the drawer, pause, speed, states, rewind and fast-forward can never be locked out. The
+/// second field is what the key does, in the words the refusal notice uses.
+///
+/// `Backspace` is deliberately absent: it is Select on the Game Boy, Advance and Super NES
+/// layouts, and rewind holds it only where no button does (#78).
+pub const RESERVED: &[(Key, &str)] = &[
+    ("P", "pauses the game"),
+    ("M", "opens the drawer"),
+    ("Tab", "fast-forwards while held"),
+    ("F1", "opens the drawer"),
+    ("F2", "speeds the game up"),
+    ("F3", "slows the game down"),
+    ("F5", "saves the selected state"),
+    ("F7", "loads the selected state"),
+    ("F8", "rewinds while held"),
+    ("Escape", "opens and closes the drawer"),
+];
+
+/// What `key` does for the window, when the app reserves it (#79); `None` for a key a game button
+/// may hold.
+pub fn reserved(key: &str) -> Option<&'static str> {
+    RESERVED
+        .iter()
+        .find(|(name, _)| *name == key)
+        .map(|(_, what)| *what)
+}
+
 /// The row label of each button, in [`Buttons::ALL`] order.
 const ROW_LABELS: [&str; 12] = [
     "Up", "Down", "Left", "Right", "A", "B", "X", "Y", "L", "R", "Start", "Select",
@@ -162,6 +196,14 @@ impl Default for Keymap {
     }
 }
 
+/// A keys file read: the map it describes, and one line for the bar when the file named a key the
+/// window keeps for itself (#79). Those lines are skipped, so their buttons keep the built-in keys.
+#[derive(Debug)]
+pub struct Loaded {
+    pub map: Keymap,
+    pub notice: Option<String>,
+}
+
 impl Keymap {
     /// The shipped layout for a system: each source app's own defaults, so a Game Boy and a
     /// Super NES both feel the way their users left them.
@@ -178,10 +220,13 @@ impl Keymap {
     /// keeps the built-in key, so a three-line file is a keymap rather than an error.
     ///
     /// An unknown button or key, a line that is not `button = key`, and two buttons left holding
-    /// one host key are each refused with the 1-based line number.
-    pub fn from_text(system: SystemKind, text: &str) -> Result<Keymap, String> {
+    /// one host key are each refused with the 1-based line number. A line naming a key the window
+    /// reserves (#79) is skipped — that button keeps the key it had — and described in
+    /// [`Loaded::notice`], so the bar can say so once.
+    pub fn from_text(system: SystemKind, text: &str) -> Result<Loaded, String> {
         let mut map = Keymap::builtin(system);
         let mut bound: Vec<(Key, usize)> = Vec::new();
+        let mut ignored: Vec<String> = Vec::new();
         for (n, line) in text.lines().enumerate() {
             let line_number = n + 1;
             let line = line.trim();
@@ -201,6 +246,10 @@ impl Keymap {
             let Some(known) = KEY_NAMES.iter().find(|known| **known == key) else {
                 return Err(format!("line {line_number}: unknown key `{key}`"));
             };
+            if let Some(what) = reserved(key) {
+                ignored.push(format!("{name} = {key} ({key} {what})"));
+                continue;
+            }
             if let Some((_, first)) = bound.iter().find(|(bound_key, _)| bound_key == known) {
                 return Err(format!(
                     "line {line_number}: {key:?} is bound to more than one button (already on line {first})"
@@ -210,7 +259,13 @@ impl Keymap {
             map.set(button, known);
         }
         map.check_unique()?;
-        Ok(map)
+        let notice = (!ignored.is_empty()).then(|| {
+            format!(
+                "keys file: {} ignored; those buttons keep their own keys",
+                ignored.join(", ")
+            )
+        });
+        Ok(Loaded { map, notice })
     }
 
     /// The text a keys file holds: one line a button, in settings order, and no comment, so a
@@ -284,12 +339,16 @@ impl Keymap {
 }
 
 /// Reads `<system>/keys.txt`; a missing file is the built-in layout, and a malformed one is an
-/// error the caller reports once before keeping the built-in layout.
-pub fn load(paths: &Paths, system: SystemKind) -> Result<Keymap, String> {
+/// error the caller reports once before keeping the built-in layout. A file naming a reserved
+/// key loads the rest and carries one notice (#79).
+pub fn load(paths: &Paths, system: SystemKind) -> Result<Loaded, String> {
     let file = paths.keys_file(system);
     match fs::read_to_string(&file) {
         Ok(text) => Keymap::from_text(system, &text),
-        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok(Keymap::builtin(system)),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound => Ok(Loaded {
+            map: Keymap::builtin(system),
+            notice: None,
+        }),
         Err(why) => Err(format!("cannot read {}: {why}", file.display())),
     }
 }
@@ -318,8 +377,9 @@ pub fn pad(held: &[String], map: &Keymap) -> Buttons {
 
 /// Whether one of the running system's buttons holds `key` (#74).
 ///
-/// The button wins over the window's own keys: binding A to `P` leaves `P` to A and stops it
-/// pausing, and the same goes for the drawer's `Escape`/`M`/`F1` and fast-forward's `Tab`.
+/// A reserved key is never held by a button (#79), so this is true only for keys the window
+/// left free: `Backspace` when a layout does not bind it (rewind then holds it, #78) and the
+/// drawer's navigation keys, which the window takes back while the drawer is open.
 pub fn claimed(app: &App, key: &str) -> bool {
     live_map(app).is_some_and(|(_, map)| {
         Buttons::ALL
@@ -405,6 +465,19 @@ pub fn on_row(app: &mut App, index: usize, act: RowAct) -> bool {
             let Some((_, mut map)) = live_map(app) else {
                 return false;
             };
+            // #79: the window keeps its own keys, so the menu can never be locked out. The row
+            // says which key and what it does, and the button keeps the key it had.
+            if let Some(what) = reserved(key) {
+                app.show_notice(
+                    format!(
+                        "{} keeps {}: {key} is the app's own key and {what}",
+                        ROW_LABELS[index],
+                        map.get(button)
+                    ),
+                    true,
+                );
+                return true;
+            }
             map.rebind(button, key);
             let saved = save(app.paths(), system, &map);
             update_live(app, map);
@@ -461,8 +534,8 @@ fn load_dialog(app: &mut App) -> bool {
     };
     match fs::read_to_string(&file) {
         Ok(text) => match Keymap::from_text(system, &text) {
-            Ok(map) => {
-                if let Err(why) = save(app.paths(), system, &map) {
+            Ok(loaded) => {
+                if let Err(why) = save(app.paths(), system, &loaded.map) {
                     app.show_notice(why, true);
                     return true;
                 }
@@ -470,8 +543,13 @@ fn load_dialog(app: &mut App) -> bool {
                     .file_name()
                     .map(|name| name.to_string_lossy().into_owned())
                     .unwrap_or_else(|| file.display().to_string());
-                update_live(app, map);
-                app.show_notice(format!("{name} loaded"), false);
+                let notice = loaded.notice;
+                update_live(app, loaded.map);
+                match notice {
+                    // A reserved line was skipped; say which, and what the file now holds.
+                    Some(notice) => app.show_notice(notice, true),
+                    None => app.show_notice(format!("{name} loaded"), false),
+                }
                 true
             }
             Err(why) => {
@@ -597,7 +675,7 @@ fn ensure_live(app: &App) -> Option<SystemKind> {
         return Some(system);
     }
     let (map, notice) = match load(app.paths(), system) {
-        Ok(map) => (map, None),
+        Ok(loaded) => (loaded.map, loaded.notice),
         Err(why) => (Keymap::builtin(system), Some(why)),
     };
     live.push(Live {
@@ -657,18 +735,20 @@ mod tests {
         for system in SystemKind::ALL {
             let map = Keymap::builtin(system);
             let read = Keymap::from_text(system, &map.to_text()).expect("its own text parses");
-            assert_eq!(read, map, "{}", system.key());
+            assert_eq!(read.map, map, "{}", system.key());
+            assert_eq!(read.notice, None, "{}", system.key());
         }
     }
 
     #[test]
     fn a_file_may_name_only_some_buttons() {
-        let map = Keymap::from_text(SystemKind::Gb, "a = K\n").expect("one line is a keymap");
-        assert_eq!(map.get(Buttons::A), "K");
+        let loaded = Keymap::from_text(SystemKind::Gb, "a = K\n").expect("one line is a keymap");
+        assert_eq!(loaded.map.get(Buttons::A), "K");
         assert_eq!(
-            map.get(Buttons::B),
+            loaded.map.get(Buttons::B),
             Keymap::builtin(SystemKind::Gb).get(Buttons::B)
         );
+        assert_eq!(loaded.notice, None);
     }
 
     #[test]
