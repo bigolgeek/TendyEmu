@@ -111,7 +111,7 @@ status word only.
 | Saves, states and screenshots live in per-system folders | yes | `tests: src/battery.rs::a_save_lands_in_the_system_folder_under_the_rom_s_stem` |
 | First run copies settings, saves and states from a `snes-rust` folder | yes | `firstrun: snes-rust` |
 | The recent list survives a restart | yes | `tests: tests/shell.rs::recents_mix_systems_and_reopen_right_core` |
-| A battery file held by another program is retried, not lost | gap | S: `battery::write_atomic` gives up at once; the old app retried a held target about fifteen times |
+| A battery file held by another program is retried, not lost | yes | `tests: tests/battery.rs::a_locked_battery_file_is_retried_then_reported` |
 
 ## Notes
 

@@ -7,7 +7,7 @@
 
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tendy_core::SystemKind;
 
@@ -47,15 +47,54 @@ pub fn write(paths: &Paths, system: SystemKind, rom: &Path, body: &[u8]) -> io::
     Ok(file)
 }
 
+/// How many attempts, and how far apart, a write the system refuses for a moment gets: about one
+/// second in total, the same patience the old SNES app had for a save a virus scanner held.
+const RETRY_ATTEMPTS: u32 = 40;
+const RETRY_DELAY: Duration = Duration::from_millis(25);
+
 /// Writes through `<path>.tmp`, then renames it over `path`.
+///
+/// The real file is never opened, so a failed write cannot truncate the save that was already
+/// there. A failure that means another program holds one of the two files open is retried for
+/// about a second before it is reported, and a failed write removes its temporary.
 pub fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
     let tmp = path.with_extension("tmp");
-    {
-        let mut file = std::fs::File::create(&tmp)?;
-        file.write_all(data)?;
-        file.sync_all()?;
+    let written = with_retry(|| write_once(&tmp, path, data));
+    if written.is_err() {
+        let _ = std::fs::remove_file(&tmp);
     }
-    std::fs::rename(&tmp, path)
+    written
+}
+
+/// One whole attempt: create the temporary (truncating only it), write it, sync it, rename it.
+fn write_once(tmp: &Path, path: &Path, data: &[u8]) -> io::Result<()> {
+    let mut file = std::fs::File::create(tmp)?;
+    file.write_all(data)?;
+    file.sync_all()?;
+    drop(file);
+    std::fs::rename(tmp, path)
+}
+
+/// Repeats a write that was refused because another program held a file open, sleeping between
+/// attempts. Every other error is returned at once, and so is the last attempt's error.
+fn with_retry(write: impl Fn() -> io::Result<()>) -> io::Result<()> {
+    let mut attempt = 1;
+    loop {
+        match write() {
+            Err(error) if attempt < RETRY_ATTEMPTS && held(&error) => {
+                std::thread::sleep(RETRY_DELAY);
+                attempt += 1;
+            }
+            other => return other,
+        }
+    }
+}
+
+/// Whether `error` says another program holds one of the two files open: Windows 5
+/// `ERROR_ACCESS_DENIED` on the rename over a target it opened, 32 `ERROR_SHARING_VIOLATION` on
+/// the temporary. Both clear in milliseconds; no other platform holds a file this way.
+fn held(error: &io::Error) -> bool {
+    matches!(error.raw_os_error(), Some(5) | Some(32))
 }
 
 /// Wall-clock milliseconds since the UNIX epoch, for the cores' real-time clocks.
@@ -92,6 +131,30 @@ mod tests {
         let file = save_path(&paths, SystemKind::Snes, Path::new("games/Zelda.sfc"));
         assert_eq!(file, root.join("snes").join("saves").join("Zelda.srm"));
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_held_write_is_retried_before_it_is_reported() {
+        let attempts = std::cell::Cell::new(0u32);
+        let error = with_retry(|| {
+            attempts.set(attempts.get() + 1);
+            Err(io::Error::from_raw_os_error(5))
+        })
+        .expect_err("a write that stays held fails");
+        assert_eq!(attempts.get(), RETRY_ATTEMPTS, "every attempt is made");
+        assert_eq!(error.raw_os_error(), Some(5));
+    }
+
+    #[test]
+    fn a_write_that_fails_for_another_reason_is_reported_at_once() {
+        let attempts = std::cell::Cell::new(0u32);
+        let error = with_retry(|| {
+            attempts.set(attempts.get() + 1);
+            Err(io::Error::from_raw_os_error(2))
+        })
+        .expect_err("a refused write fails");
+        assert_eq!(attempts.get(), 1, "only a held file is retried");
+        assert_eq!(error.raw_os_error(), Some(2));
     }
 
     #[test]
