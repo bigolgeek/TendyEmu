@@ -1,5 +1,9 @@
-//! Runs a file, or a folder of files, through detection and its core without a window (DESIGN
-//! §6.1, §8; issue #28).
+//! The command line, the headless runner and the library sweep (DESIGN §6.1, §8; issues #28 and
+//! #84).
+//!
+//! [`parse`] is the one grammar for the whole binary: `main.rs` reads the line before the window
+//! exists, so `--help`, a refusal by name and a headless sweep never flash one. The window takes a
+//! file and the three start options; `--headless` takes the sweep's own flags.
 //!
 //! The window and the device calls are the binary's job. This module is the same detection, the
 //! same `loader::build` and the same `Machine::run_frame` as the window loop, with the picture
@@ -24,6 +28,8 @@ use std::path::{Path, PathBuf};
 
 use tendy_core::{Frame, Machine, SystemKind};
 use tendy_detect::ArchiveKind;
+
+use crate::app::App;
 
 /// How far a run goes, and which frames count as the sample.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -448,49 +454,168 @@ fn collect(dir: &Path, base: &Path, out: &mut Vec<(PathBuf, String)>) -> std::io
     Ok(())
 }
 
-/// The words `tendyemu` prints when it is asked for help.
-pub const USAGE: &str = "usage: tendyemu --headless --frames N [--blank-frames N] [--sample|--any-frame] <file-or-folder>";
-
-/// The headless command: `tendyemu --headless --frames N <file-or-folder>` (DESIGN §6.1).
+/// What the whole command line asked for (issue #84).
 ///
-/// `main.rs` hands its arguments here when `--headless` is the first one; the exit code is 0 when
-/// the report was printed (refusals are rows, not errors), 2 for a bad command line and 1 when the
-/// folder cannot be read.
-pub fn cli(args: &[OsString]) -> i32 {
-    let mut options = Options::default();
-    let mut path: Option<PathBuf> = None;
+/// `main.rs` decides from it whether to print [`HELP`], run the sweep, or open the window; the
+/// windowed app then takes the start options through [`Command::apply`].
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Command {
+    /// `--help` or `-h`: print [`HELP`] and exit 0.
+    pub help: bool,
+    /// `--headless`: run the sweep instead of opening the window.
+    pub headless: bool,
+    /// The one file or folder argument.
+    pub path: Option<PathBuf>,
+    /// `--scale N`: the window scale to start at, written to the settings file.
+    pub scale: Option<u32>,
+    /// `--fullscreen`: start in fullscreen, written to the settings file.
+    pub fullscreen: bool,
+    /// True after `--no-audio`: this run starts with the sound off.
+    pub no_audio: bool,
+    /// With `--headless`: how far the sweep runs, and which frames it judges.
+    pub options: Options,
+}
+
+/// One line, printed under a refusal: enough to find the flags, short enough to sit beside the
+/// refusal's own words.
+pub const USAGE: &str = "usage: tendyemu [<file>] [flags]; tendyemu --help lists the flags";
+
+/// `--help`: every flag the one binary takes, with what each does.
+pub const HELP: &str = "\
+usage: tendyemu [<file>] [--scale N] [--fullscreen] [--no-audio]
+       tendyemu --headless [--frames N] [--blank-frames N] [--sample|--any-frame] <file-or-folder>
+
+  <file>            open a ROM or an archive at start
+  --scale N         window scale, 1 to 6; remembered in config.toml
+  --fullscreen      start fullscreen; remembered in config.toml
+  --no-audio        start with the sound off
+  --headless        sweep a file or a folder with no window and no sound device
+  --frames N        with --headless: the frame every row is judged on (600)
+  --blank-frames N  with --headless: the longer horizon a one-colour row gets (1800)
+  --sample          with --headless: judge only on the sample frame
+  --any-frame       with --headless: judge on any frame up to the horizon
+  --help, -h        this text
+";
+
+impl Command {
+    /// Applies the start options to a fresh session.
+    ///
+    /// `--scale` and `--fullscreen` are settings, not session state: they are written to
+    /// `config.toml`, which is where the drawer's Scale and Fullscreen rows read them. The window
+    /// therefore starts at the size asked for, the row shows the same number as the key, and the
+    /// next run keeps it (§6.2). `--no-audio` belongs to this run alone: it silences the mix, says
+    /// `MUTED` in the bar, and leaves the sound setting to the rows that own it.
+    pub fn apply(&self, app: &mut App) -> Result<(), String> {
+        let mut config = crate::config::load(app.paths()).config;
+        let mut changed = false;
+        if let Some(scale) = self.scale {
+            config.set(crate::config::APP, "scale", scale.to_string());
+            changed = true;
+        }
+        if self.fullscreen {
+            config.set(crate::config::APP, "fullscreen", "true");
+            changed = true;
+        }
+        if changed {
+            crate::config::save(app.paths(), &config)
+                .map_err(|why| format!("settings not written: {why}"))?;
+        }
+        if self.no_audio {
+            app.set_muted(true);
+        }
+        Ok(())
+    }
+}
+
+/// Parses the arguments after the program name. An error is one line that names the flag or the
+/// argument; the caller prints it with [`USAGE`] and exits 2, the same code a bad sweep line takes.
+pub fn parse(args: &[OsString]) -> Result<Command, String> {
+    let mut command = Command::default();
+    let mut sweep_option = false;
     let mut words = args.iter().map(|arg| arg.to_string_lossy().into_owned());
     while let Some(word) = words.next() {
         match word.as_str() {
-            "--headless" => {}
-            "--sample" => options.any_frame = false,
-            "--any-frame" => options.any_frame = true,
-            "--frames" | "--blank-frames" => {
-                let Some(value) = words.next().and_then(|value| value.parse::<u32>().ok()) else {
-                    eprintln!("{USAGE}");
-                    return 2;
-                };
-                if word == "--frames" {
-                    options.frames = value;
-                } else {
-                    options.long = value;
-                }
+            "--help" | "-h" => command.help = true,
+            "--headless" => command.headless = true,
+            "--fullscreen" => command.fullscreen = true,
+            "--no-audio" => command.no_audio = true,
+            "--scale" => command.scale = Some(number(&mut words, "--scale")?),
+            "--frames" => {
+                command.options.frames = number(&mut words, "--frames")?;
+                sweep_option = true;
             }
-            other if other.starts_with('-') => {
-                eprintln!("{USAGE}");
-                return 2;
+            "--blank-frames" => {
+                command.options.long = number(&mut words, "--blank-frames")?;
+                sweep_option = true;
             }
-            other if path.is_none() => path = Some(PathBuf::from(other)),
-            _ => {
-                eprintln!("{USAGE}");
-                return 2;
+            "--sample" => {
+                command.options.any_frame = false;
+                sweep_option = true;
+            }
+            "--any-frame" => {
+                command.options.any_frame = true;
+                sweep_option = true;
+            }
+            other if other.starts_with('-') => return Err(format!("unknown flag `{other}`")),
+            other if command.path.is_none() => command.path = Some(PathBuf::from(other)),
+            other => {
+                return Err(format!(
+                    "unexpected argument `{other}`: the command takes one file"
+                ));
             }
         }
     }
-    let Some(path) = path else {
+    if let Some(scale) = command.scale
+        && !(crate::display::MIN_SCALE..=crate::display::MAX_SCALE).contains(&scale)
+    {
+        return Err(format!(
+            "--scale takes {} to {}, not {scale}",
+            crate::display::MIN_SCALE,
+            crate::display::MAX_SCALE
+        ));
+    }
+    if sweep_option && !command.headless {
+        return Err(
+            "--frames, --blank-frames, --sample and --any-frame need --headless".to_string(),
+        );
+    }
+    Ok(command)
+}
+
+/// The number after a flag, or one line naming the flag it belongs to.
+fn number(words: &mut impl Iterator<Item = String>, flag: &str) -> Result<u32, String> {
+    match words.next() {
+        Some(value) => value
+            .parse()
+            .map_err(|_| format!("{flag} needs a number, not `{value}`")),
+        None => Err(format!("{flag} needs a number")),
+    }
+}
+
+/// The headless command: `tendyemu --headless --frames N <file-or-folder>` (DESIGN §6.1).
+///
+/// `main.rs` hands its arguments here when the line names `--headless`; the exit code is 0 when
+/// the report was printed (refusals are rows, not errors), 2 for a bad command line and 1 when the
+/// folder cannot be read.
+pub fn cli(args: &[OsString]) -> i32 {
+    let command = match parse(args) {
+        Ok(command) => command,
+        Err(why) => {
+            eprintln!("tendyemu: {why}");
+            eprintln!("{USAGE}");
+            return 2;
+        }
+    };
+    if command.help {
+        print!("{HELP}");
+        return 0;
+    }
+    let Some(path) = command.path else {
+        eprintln!("tendyemu: --headless needs a file or a folder");
         eprintln!("{USAGE}");
         return 2;
     };
+    let options = command.options;
     if !path.exists() {
         eprintln!("sweep: {} does not exist", path.display());
         return 1;

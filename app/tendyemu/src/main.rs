@@ -1,16 +1,19 @@
 //! The windowed binary: one window for every core (DESIGN §6.1, §7.2).
 //!
 //! `tendyemu <file>` opens the file, and with no argument the window waits with the drawer's Open
-//! ROM row. The loop passes the frame time to `App::tick`, performs what the drawer asked for and
-//! paints; everything that can be decided without a window lives in the library half.
+//! ROM row. The command line is read before the window exists, so `--help`, a refused flag and a
+//! headless sweep never flash one (issue #84). The loop passes the frame time to `App::tick`,
+//! performs what the drawer asked for and paints; everything that can be decided without a window
+//! lives in the library half.
 
-use std::path::PathBuf;
+use std::ffi::OsString;
 
 use macroquad::prelude::*;
 use tendyemu::app::App;
 use tendyemu::display::{self, Follower, Picture};
 use tendyemu::draw;
 use tendyemu::file_pick;
+use tendyemu::headless::{self, Command};
 use tendyemu::menu;
 
 fn window_conf() -> Conf {
@@ -24,29 +27,47 @@ fn window_conf() -> Conf {
     }
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    // The library sweep runs without a picture: `tendyemu --headless <folder>` prints one row per
-    // ROM and exits with the report's own code.
-    {
-        let mut args = std::env::args_os();
-        if args.nth(1).is_some_and(|first| first == "--headless") {
-            std::process::exit(tendyemu::headless::cli(&args.collect::<Vec<_>>()));
+fn main() {
+    // The whole line is the library's to read (issue #84), so `--help`, a refused flag and a
+    // sweep exit before the window exists. The file is still the one argument the line names —
+    // `args_os().nth(1)` when it comes first, as it did when the window read one argument.
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let command = match headless::parse(&args) {
+        Ok(command) => command,
+        Err(why) => {
+            eprintln!("tendyemu: {why}");
+            eprintln!("{}", headless::USAGE);
+            std::process::exit(2);
         }
+    };
+    if command.help {
+        print!("{}", headless::HELP);
+        return;
     }
+    if command.headless {
+        std::process::exit(headless::cli(&args));
+    }
+    macroquad::Window::from_config(window_conf(), run(command));
+}
+
+async fn run(command: Command) {
     let mut app = App::with_default_paths();
     file_pick::set_interactive(true);
-    if let Some(argument) = std::env::args_os().nth(1) {
-        let path = PathBuf::from(argument);
-        if let Err(why) = app.open(&path) {
-            app.show_notice(why, true);
-        }
+    if let Err(why) = command.apply(&mut app) {
+        app.show_notice(why, true);
+    }
+    if let Some(path) = &command.path
+        && let Err(why) = app.open(path)
+    {
+        app.show_notice(why, true);
     }
 
     let mut texture: Option<Texture2D> = None;
     let mut picture_size = (0u16, 0u16);
     let mut follower = Follower::new();
-    let mut fullscreen = display::options(&app).fullscreen;
+    // The window is created windowed; the first pass asks the display for its mode, so a
+    // remembered `fullscreen = true` (or `--fullscreen`) really starts fullscreen.
+    let mut fullscreen = false;
 
     loop {
         if is_quit_requested() || app.quit_requested() {
