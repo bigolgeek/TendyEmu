@@ -31,7 +31,9 @@ history**: code is imported into it file by file, cleaned of local paths and int
    system is refused with a one-line reason, never guessed.
 3. **Import first, improve later.** Moving a core into TendyEmu must not change what it does: every
    imported core produces the same frames, audio and save states as its source commit
-   (§8, "inertness"). Fixes and features come after, each as its own issue.
+   (§8, "inertness"). The one intended difference is SNES save states (#71): the source core wrote
+   a 38-byte scaffold, so TendyEmu serialises the whole machine instead. Fixes and features come
+   after, each as its own issue.
 4. **No copyrighted ROMs in the repo.** Tests build their own ROM bytes in code or use public test
    suites whose licence allows redistribution.
 5. **Local and offline.** No accounts, no telemetry, no network access unless a feature the user
