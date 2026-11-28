@@ -1,0 +1,45 @@
+Front-end tests of the old NES app that did not come across unchanged, and what covers
+each one now (DESIGN §8, issue #26). One line per old test file, with the old pass count.
+
+This file covers the old app's front end: the drawer, settings, keys, display, audio,
+capture and the launch path. The emulator modules that moved into crates/tendy-nes keep
+their own tests with the core, so they are not listed here. A line that ends in `none`
+is a feature the old app had and TendyEmu does not: the parity rule (SPEC §6) keeps it
+with the old app in v0.1, and docs/parity/nes.md carries the gap.
+
+Old file                                    passed  Replaced by
+src/crt.rs                                      14  none - CRT filter is a gap (docs/parity/nes.md)
+src/shader.rs                                    5  none - pipeline shaders are a gap
+src/memview.rs                                  19  none - memory viewer is a gap
+src/session_switch.rs                            3  app/src/switch.rs unit tests; tests/switch.rs
+src/launch.rs                                  111  app/src/loader.rs unit tests; tests/shell.rs
+                                                    (open_each_system_by_argument,
+                                                    refusal_shows_detect_text); core machine tests
+src/save.rs                                     15  app/src/battery.rs unit tests; tests/shell.rs
+                                                    (battery_written_on_exit); core save tests
+src/audio.rs                                    11  app/src/audio.rs unit tests; tests/audio.rs
+src/keys.rs                                     27  app/src/keys.rs unit tests; tests/input.rs
+                                                    (every_core_button_reachable_from_keyboard)
+tests/it/audio_output.rs                        26  tests/audio.rs (each_core_rate_converted_to_device,
+                                                    no_underrun_at_normal_speed_each_system,
+                                                    a_tone_survives_every_core_rate);
+                                                    tests/capture.rs (wav_records_each_system)
+tests/it/avi.rs                                  6  app/src/avi.rs unit tests; tests/capture.rs
+                                                    (avi_records_each_system)
+tests/it/keys.rs                                 6  tests/input.rs (bindings_saved_per_system,
+                                                    bindings_restored_per_system)
+tests/it/nsf_launch.rs                           5  tests/nes_parity.rs (the file:nsf row opens a
+                                                    .nsf and reaches a machine); core nsf tests
+tests/it/saves.rs                                7  app/src/battery.rs unit tests; tests/shell.rs
+                                                    (battery_written_on_exit); tests/switch.rs
+                                                    (switch_writes_battery_each_time)
+tests/it/cdl.rs                                  7  none - code/data log is a gap; the core Cdl
+                                                    type keeps its own unit tests
+tests/it/cheatdb_launch.rs                       6  none - the cheats folder is a gap; core
+                                                    cheatdb and genie unit tests cover the readers
+tests/it/fds.rs                                 12  none - FDS loading is a gap; core
+                                                    mapper/fds.rs unit tests cover the mapper
+tests/it/history_view.rs                        14  none - the scrub bar is a gap; core history
+                                                    tests cover the log
+tests/it/unif.rs                                24  none - the loader refuses .unf, and the parser
+                                                    came across without its tests
