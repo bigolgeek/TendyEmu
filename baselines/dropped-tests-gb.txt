@@ -1,0 +1,50 @@
+# The old Game Boy app's tests that are not carried into TendyEmu (DESIGN §8, #25)
+#
+# `gb-rust` at 449154a has 63 files under `tests/`. Forty of them are carried unchanged by the
+# core crates (`crates/tendy-gb/tests`, `crates/tendy-gba/tests`). The 23 below are not, and each
+# entry names what stands in for it. One entry per file, its reason on the lines below it:
+#
+#   tests/<old file> -> <the TendyEmu test that replaces it>
+#   tests/<old file> -> none: <why, with the parity row or issue that owns it>
+#
+# Paths are from the repo root. `docs/parity/gb.md` is the feature table the `none` lines refer to.
+
+tests/menu.rs -> app/tendyemu/tests/gb_menu.rs (four tests) and the unit tests inside
+    app/tendyemu/src/menu.rs. The row-specific tests in the old file (sample rate, boot ROM,
+    link, per-game, cheats, Advance refusals) pin rows that docs/parity/gb.md lists as gaps.
+tests/launch.rs -> app/tendyemu/tests/gb_parity.rs, the `argument <file>` row: a cartridge named
+    on the command line opens. The old file's flags are the parity table's Command line gaps.
+tests/config.rs -> app/tendyemu/tests/settings.rs (per_game_overrides_system_section,
+    unknown_key_gives_one_notice) and the unit tests inside app/tendyemu/src/settings.rs. The old
+    file pinned the flat config; TendyEmu files settings under a section per system (§6.2).
+tests/display.rs -> app/tendyemu/tests/display.rs (native_size_gb, switch_resizes_window,
+    integer_scale_fits) and the unit tests inside app/tendyemu/src/display.rs.
+tests/front_end.rs -> app/tendyemu/tests/capture.rs::screenshot_native_size_each_system: a
+    screenshot is the machine's own picture, on every system.
+tests/state.rs -> app/tendyemu/tests/states.rs (own_states_round_trip_byte_identical_each_system,
+    slot_files_named_as_source_apps, a_save_writes_the_state_and_its_thumbnail) and
+    app/tendyemu/tests/capture.rs::rewind_steps_back_each_system.
+tests/thumb.rs -> app/tendyemu/tests/states.rs::thumbnail_beside_slot.
+tests/record.rs -> app/tendyemu/tests/capture.rs (gif_records_each_system,
+    wav_records_each_system, avi_records_each_system) and the unit tests inside
+    app/tendyemu/src/record.rs.
+tests/audio_ring.rs -> app/tendyemu/tests/audio.rs::a_starved_ring_plays_silence.
+tests/audio_sinc.rs -> app/tendyemu/tests/audio.rs::each_core_rate_converted_to_device.
+tests/gba_rewind.rs -> app/tendyemu/tests/capture.rs::rewind_steps_back_each_system.
+tests/sgb_show.rs -> crates/tendy-gb/tests/sgb_border.rs: the 256x224 border, the window at
+    48,40, and the picture a screenshot of an SGB machine holds.
+tests/scaffold.rs -> app/tendyemu/tests/scrub.rs.
+tests/diag.rs -> none: the headless sweep belongs to the M5 headless lane (#28). The core's own
+    machine tests (crates/tendy-gb/tests/machine.rs) stand in for what it measured.
+tests/boot.rs -> none: the Boot ROM row is a parity gap ("Boot ROM: off, built-in, or a file").
+    The core's boot code keeps its six unit tests in crates/tendy-gb/src/boot.rs.
+tests/cheats.rs -> none: the Cheats row is a parity gap. The code parser keeps its eight unit
+    tests in crates/tendy-gb/src/cheats.rs.
+tests/console.rs -> none: the Console row is a parity gap; the row is written and loader.rs
+    ignores it, so no end-to-end console choice exists to test.
+tests/filter.rs -> none: the LCD filter is a parity gap.
+tests/frameskip.rs -> none: frameskip is a parity gap.
+tests/link.rs -> none: the link cable is a parity gap; the core's link.rs has no unit tests.
+tests/debugger.rs -> none: the debugger is #48 and a parity gap.
+tests/trace_pc.rs -> none: --trace-pc is the trace panel (#48) and a parity gap.
+tests/cgb.rs -> none: a core test, not a front-end test; the core lane (#7) owns it.
