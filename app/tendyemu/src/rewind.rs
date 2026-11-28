@@ -37,6 +37,11 @@ pub const BYTE_BUDGET: usize = 128 * 1024 * 1024;
 /// The span §6.2 asks for when the settings file says nothing (`rewind_seconds`).
 pub const DEFAULT_SECONDS: u64 = 10;
 
+/// The keys that hold to rewind, named as the Input page names them (#78): F8 is the gb app's
+/// own rewind key and no default layout binds it; Backspace rewinds wherever no game button has
+/// taken it (#74).
+pub const REWIND_KEYS: [&str; 2] = ["F8", "Backspace"];
+
 /// Bytes of header a [`Entry::Patch`] spends on each run: a `u32` offset and a `u16` length.
 const RUN_HEADER: usize = 6;
 
@@ -339,6 +344,31 @@ fn row(
     }
 }
 
+/// The rewind keys the running system's game buttons leave free: F8 on every default layout, and
+/// Backspace unless the layout puts it on a button (the Game Boy's Select, for one).
+pub fn hotkeys(app: &App) -> Vec<&'static str> {
+    REWIND_KEYS
+        .into_iter()
+        .filter(|key| !crate::keys::claimed(app, key))
+        .collect()
+}
+
+/// Whether a rewind key is held this frame; `main.rs` hands the answer to
+/// [`App::set_rewinding`].
+pub fn held(app: &App) -> bool {
+    hotkeys(app).into_iter().any(crate::keys::down)
+}
+
+/// The Rewind row's label, naming the keys that hold it: `Rewind (hold F8)`, `Rewind (hold F8 or
+/// Backspace)`. A keys file that takes both leaves the plain label.
+fn rewind_label(keys: &[&str]) -> String {
+    match keys {
+        [] => "Rewind".to_string(),
+        [only] => format!("Rewind (hold {only})"),
+        [rest @ .., last] => format!("Rewind (hold {} or {last})", rest.join(", ")),
+    }
+}
+
 /// The rewind rows: the on/off switch and one step back.
 pub fn rows(app: &App) -> Vec<Row> {
     if app.machine().is_none() {
@@ -353,9 +383,10 @@ pub fn rows(app: &App) -> Vec<Row> {
     } else {
         "Off".to_string()
     };
+    let label = rewind_label(&hotkeys(app));
     vec![
         row(
-            "Rewind",
+            label,
             toggle,
             RowKind::Toggle,
             "Keep a buffer of the last seconds",
@@ -404,7 +435,7 @@ pub fn enabled() -> bool {
     SESSION.with(|cell| cell.borrow().enabled)
 }
 
-/// Restores the newest snapshot (the drawer's Step back row, and the held Backspace). `false`
+/// Restores the newest snapshot (the drawer's Step back row, and a held rewind key). `false`
 /// when there is none, or when the core refuses it.
 pub fn step_back(app: &mut App) -> bool {
     let Some(machine) = app.machine_mut() else {

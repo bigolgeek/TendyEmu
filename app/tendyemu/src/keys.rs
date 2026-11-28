@@ -328,6 +328,11 @@ pub fn claimed(app: &App, key: &str) -> bool {
     })
 }
 
+/// Whether the host key a keys file names is down this frame.
+pub fn down(name: &str) -> bool {
+    mc_keycode(name).is_some_and(is_key_down)
+}
+
 /// The host-key names down this frame, as the window's key table reports them, for the running
 /// system's bindings. `main.rs` puts the result into [`App::set_held_buttons`].
 pub fn held_names(app: &App) -> Vec<String> {
@@ -337,10 +342,10 @@ pub fn held_names(app: &App) -> Vec<String> {
     let mut held: Vec<String> = Vec::new();
     for (button, _) in Buttons::ALL {
         let name = map.get(button);
-        if held.iter().any(|down| down == name) {
+        if held.iter().any(|other| other == name) {
             continue;
         }
-        if mc_keycode(name).is_some_and(is_key_down) {
+        if down(name) {
             held.push(name.to_string());
         }
     }
