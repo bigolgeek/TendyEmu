@@ -400,7 +400,7 @@ impl App {
     ) -> Result<SystemKind, String> {
         let (entry, detected) =
             tendy_detect::open(name, bytes).map_err(|refusal| refusal.to_string())?;
-        let mut machine = loader::build(&entry, &detected)?;
+        let mut machine = loader::build_with_rom(&entry, &detected, path)?;
         let rate = machine.frame_rate();
         machine.set_sample_rate(self.sample_rate);
 
