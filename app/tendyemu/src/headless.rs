@@ -61,11 +61,6 @@ pub enum Verdict {
 }
 
 impl Verdict {
-    /// Whether the run put more than one colour on screen.
-    pub fn is_draws(&self) -> bool {
-        matches!(self, Verdict::Draws { .. })
-    }
-
     /// The one-line form the sweep prints.
     pub fn detail(&self) -> String {
         match self {
@@ -87,7 +82,7 @@ pub struct Outcome {
     pub file: String,
     /// The system detection named; `None` when detection itself refused before naming one.
     pub system: Option<SystemKind>,
-    /// The cartridge title, or the file stem where the format has none.
+    /// The cartridge title the core reports; empty when no machine was built.
     pub title: String,
     /// Frames actually run.
     pub frames: u32,
@@ -438,6 +433,8 @@ fn collect(dir: &Path, base: &Path, out: &mut Vec<(PathBuf, String)>) -> std::io
         };
         if kind.is_dir() {
             // An unreadable subfolder is not the sweep's subject; the files it can read still run.
+            // `file_type` does not follow links, so a symlinked folder (a Windows junction, say) is
+            // skipped: `find` does not follow either, and one pointing at its own parent would not end.
             let _ = collect(&path, base, out);
         } else if entry.file_name().to_str().is_some_and(is_rom_name) {
             let relative = path
@@ -494,6 +491,10 @@ pub fn cli(args: &[OsString]) -> i32 {
         eprintln!("{USAGE}");
         return 2;
     };
+    if !path.exists() {
+        eprintln!("sweep: {} does not exist", path.display());
+        return 1;
+    }
     if path.is_dir() {
         match sweep(&path, &options) {
             Ok(report) => {
@@ -557,6 +558,16 @@ mod tests {
             2
         );
         assert_eq!(cli(&["--headless".into(), "--bogus".into()]), 2);
+        // A path that is not there is one error line and exit 1, not a report of one refusal.
+        assert_eq!(
+            cli(&[
+                "--headless".into(),
+                "--frames".into(),
+                "1".into(),
+                "no-such-file.gb".into()
+            ]),
+            1
+        );
     }
 
     #[test]
